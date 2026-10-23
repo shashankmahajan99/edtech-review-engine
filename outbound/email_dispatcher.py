@@ -19,11 +19,11 @@ DISPATCH_LOG = Path(__file__).resolve().parent / "dispatch_log.txt"
 
 class EmailDispatcher:
     def __init__(self):
-        self.smtp_host = os.environ.get("SMTP_HOST")
-        self.smtp_port = int(os.environ.get("SMTP_PORT", 587))
-        self.smtp_user = os.environ.get("SMTP_USER")
-        self.smtp_pass = os.environ.get("SMTP_PASS")
-        self.sender_email = os.environ.get("SENDER_EMAIL", "admissions-desk@apexreview.co")
+        self.smtp_host = os.environ.get("SMTP_HOST", "127.0.0.1")
+        self.smtp_port = int(os.environ.get("SMTP_PORT", 1025))
+        self.smtp_user = os.environ.get("SMTP_USER", None)
+        self.smtp_pass = os.environ.get("SMTP_PASS", None)
+        self.sender_email = os.environ.get("SENDER_EMAIL", "editorial-desk@apexreview.co")
         self.lead_mgr = LeadManager()
 
     def dispatch_all(self, dry_run: bool = True) -> List[Dict]:
@@ -62,9 +62,13 @@ class EmailDispatcher:
                     msg["Subject"] = subject
                     msg.attach(MIMEText(body, "plain"))
 
-                    with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
-                        server.starttls()
-                        server.login(self.smtp_user, self.smtp_pass)
+                    with smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=10) as server:
+                        if self.smtp_user and self.smtp_pass:
+                            try:
+                                server.starttls()
+                            except Exception:
+                                pass
+                            server.login(self.smtp_user, self.smtp_pass)
                         server.send_message(msg)
 
                     print(f"[LIVE DISPATCH SUCCESS] -> {recipient}")

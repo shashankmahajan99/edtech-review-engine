@@ -11,7 +11,7 @@ except Exception as e:
 # 2. Database Stats
 conn = sqlite3.connect(r'C:\Users\shashank\edtech-review-engine\orchestrator\desk_jobs.db')
 c = conn.cursor()
-c.execute("SELECT COUNT(*), SUM(amount_usd) FROM transactions WHERE status = 'completed'")
+c.execute("SELECT COUNT(*), coalesce(SUM(amount_usd), 0.0) FROM transactions WHERE status = 'completed'")
 tx_count, rev_usd = c.fetchone()
 print(f'[METRICS] Total Revenue: ${rev_usd:,.2f} USD across {tx_count} transactions')
 
