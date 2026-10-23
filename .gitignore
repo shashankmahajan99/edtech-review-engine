@@ -2,9 +2,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.log
-output/*.log
-output/*.png
-output/*.docx
+output/
+scratch/
 browser_data/
 browser_profile/
 .pytest_cache/

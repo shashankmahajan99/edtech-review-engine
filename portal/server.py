@@ -832,6 +832,7 @@ async def landing_page(request: Request):
                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     Reviewer Desk
                 </a>
+                <a href="/admin/directory" class="text-amber-400 hover:text-amber-300 transition text-xs font-mono font-bold flex items-center gap-1">🧭 Platform Map</a>
                 <a href="/admin/services" class="text-slate-400 hover:text-slate-200 transition text-xs">Service Monitor</a>
                 {auth_nav}
                 <a href="#portal" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl transition shadow-lg shadow-blue-500/25">Submit Manuscript</a>
@@ -2682,6 +2683,7 @@ async def company_governance_dashboard(request: Request):
             </div>
         </div>
         <div class="flex items-center gap-3">
+            <a href="/admin/directory" class="text-xs text-amber-300 hover:text-white bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/50 px-3 py-1.5 rounded-lg transition font-bold flex items-center gap-1.5">🧭 Platform Map</a>
             <a href="/admin/outreach" class="text-xs text-white bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/50 px-3 py-1.5 rounded-lg transition font-bold flex items-center gap-1.5">🎯 1-Click Outreach</a>
             <a href="/admin/self-prompting" class="text-xs text-white bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/50 px-3 py-1.5 rounded-lg transition font-bold flex items-center gap-1.5">⚡ Self-Prompting Engine</a>
             <a href="/admin" class="text-xs text-slate-300 hover:text-white bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg transition font-medium">Master Admin</a>
@@ -3990,3 +3992,13 @@ async def health_check():
         "edge_tunnel": "active",
         "sla_clock": "6h guaranteed"
     }
+
+
+# --- Platform Directory & Capabilities Map ---
+from portal.directory_view import render_directory_page
+
+@app.get("/admin/directory", response_class=HTMLResponse)
+@app.get("/docs/capabilities", response_class=HTMLResponse)
+@app.get("/admin/system-map", response_class=HTMLResponse)
+async def platform_capabilities_directory(request: Request):
+    return render_directory_page(request)
