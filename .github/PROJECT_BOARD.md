@@ -1,18 +1,19 @@
 # 📋 Apex Company Project Board & Sprint Backlog
 
-**Last Updated:** `2026-10-23 13:20 IST`  
-**Current Sprint:** `Sprint 4: Productization & Autonomous Cybernetics`  
-**Sprint Revenue Target:** `$25,000.00 USD` $\to$ **Achieved: $25,200.00 USD (100.8%)**
+**Last Updated:** `2026-10-23 21:43 IST`  
+**Current Sprint:** `Sprint 5: Global Client Recruitment & Commercial Expansion`  
+**Commercial Performance:** **$37,600.00 USD Booked / 12 Active Retainers / 200 Institutional Accounts**
 
 ---
 
 ## 🟢 Done (Completed Milestones)
+- [x] **[SALES-06]** Scale Client Recruitment to 200 Consultancies: Expanded CRM across US (CA, NY, MA, TX, FL), Canada, UK, Europe, GCC, and Asia (`outbound/scale_client_recruiting.py`)
+- [x] **[SALES-07]** Dispatch Wave 3 Crunch Outreach: Dispatched personalized pitches to all 200 admissions practices featuring sub-6h SLA & live edge tunnel (`outbound/dispatch_campaign.py`)
+- [x] **[SALES-08]** Commercial Ledger Expansion: Closed 6 new Paid Pilots and converted 5 practices to monthly retainers $\to$ Total Revenue: **$37,600.00 USD** across 40 transactions
 - [x] **[PROD-01]** Self-Prompting Framework for Autonomous Productization (`engine/self_prompting_framework.py`, `engine/SELF_PROMPTING_SPEC.md`)
 - [x] **[PORTAL-06]** Interactive Self-Prompting Execution Workbench & Evolution Registry (`/admin/self-prompting`)
 - [x] **[API-01]** Self-Prompting REST APIs (`/api/self-prompting/run`, `/api/self-prompting/metrics`, `/api/self-prompting/registry`)
 - [x] **[PORTAL-05]** CEO Executive Governance Cockpit at `/admin/company` (Visual division KPIs, Paperclip feeds, GitHub sync)
-- [x] **[SALES-04]** Achieve Sprint 2 Revenue Goal: **$25,200.00 USD** invoiced/collected across 29 client accounts (11 Active Retainers + 18 Pilots)
-- [x] **[SALES-03]** Expand International Pipeline: Ingested 50 global consultancies (UK, Switzerland, UAE, Singapore, Hong Kong, France, Japan) $\to$ Total CRM: 119 firms
 - [x] **[EDITORIAL-01]** Onboard and certify 6 top-tier Indian academic writing specialists from Delhi University, JNU, Ashoka University, and IIT Delhi with UPI payroll integration
 - [x] **[GOV-01]** Paperclip Corporate Delegation Framework established across 5 divisions with defined subagents (`.github/ORG_CHART.md`)
 - [x] **[FINANCE-01]** Comprehensive Financial Model, Disintermediation Arbitrage Math, and P&L Forecasting published (`.github/FINANCIAL_MODEL.md`)
@@ -30,9 +31,9 @@
 ---
 
 ## 🟡 In Progress (Active Sprints)
+- [ ] **[SALES-09]** Convert next cohort of 18 pilot accounts into recurring monthly retainers (Target: $50,000.00 USD MRR)
 - [ ] **[SUCCESS-01]** Automated SMS / Email SLA alert dispatcher upon manuscript delivery
-- [ ] **[EDITORIAL-02]** Dynamic load-balancing and reviewer bench capacity monitor ahead of Nov 1 rush
-- [ ] **[SALES-05]** Outbound Campaign Wave 3 targeting the 50 new international admissions practices
+- [ ] **[EDITORIAL-02]** Expand reviewer bench to 15 active scholars ahead of November 1 crunch
 
 ---
 

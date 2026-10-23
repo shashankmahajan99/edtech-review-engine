@@ -12,7 +12,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = PROJECT_ROOT / "orchestrator" / "desk_jobs.db"
-PUBLIC_URL = "https://tongue-appeals-efficiently-affected.trycloudflare.com"
+PUBLIC_URL = "https://progress-trim-capable-introduce.trycloudflare.com"
 
 
 def get_db():

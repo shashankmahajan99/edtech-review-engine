@@ -11,7 +11,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = PROJECT_ROOT / "orchestrator" / "desk_jobs.db"
 DISPATCH_LOG = PROJECT_ROOT / "outbound" / "campaign_dispatch_v2.log"
-PUBLIC_URL = "https://typing-accomplish-scheduled-promotional.trycloudflare.com"
+PUBLIC_URL = "https://progress-trim-capable-introduce.trycloudflare.com"
 
 
 def dispatch_campaign():
