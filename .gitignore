@@ -9,3 +9,6 @@ browser_data/
 browser_profile/
 .pytest_cache/
 .env
+*.db
+*.sqlite
+*.sqlite3
