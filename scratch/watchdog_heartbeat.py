@@ -30,7 +30,7 @@ print(f'[METRICS] Reviewer Pending Payouts: {pending_payouts[0]} requests (INR {
 conn.close()
 
 # 3. Tunnel Verification
-tunnel_url = 'https://typing-accomplish-scheduled-promotional.trycloudflare.com'
+tunnel_url = 'https://progress-trim-capable-introduce.trycloudflare.com'
 try:
     with urllib.request.urlopen(tunnel_url + '/api/health', timeout=8) as res:
         print('[HEALTH] Global Cloudflare Edge:', res.status)
