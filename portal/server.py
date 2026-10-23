@@ -3918,6 +3918,7 @@ https://progress-trim-capable-introduce.trycloudflare.com"""
             </div>
         </div>
         <div class="flex items-center gap-3">
+            <a href="/admin/directory" class="text-xs text-amber-300 hover:text-white bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/50 px-3 py-1.5 rounded-lg transition font-bold flex items-center gap-1.5">🧭 Platform Map</a>
             <a href="/samples/institutional-pack.zip" class="text-xs text-white bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 px-3 py-1.5 rounded-lg transition font-bold flex items-center gap-1.5">📦 Download Sample Pack (.zip)</a>
             <a href="/admin/company" class="text-xs text-slate-300 hover:text-white bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg transition font-medium">CEO Cockpit</a>
             <a href="/admin/mail" class="text-xs text-slate-300 hover:text-white bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg transition font-medium">✉️ Corporate Mail</a>
@@ -3940,6 +3941,33 @@ https://progress-trim-capable-introduce.trycloudflare.com"""
                 <span>📦</span>
                 <span>Download Sample Deliverables Pack</span>
             </a>
+        </div>
+
+
+        <!-- ChatGPT Astra 24-Hour Revenue War Plan Card -->
+        <div class="bg-gradient-to-r from-amber-950/30 via-slate-900 to-indigo-950/30 border border-amber-500/30 rounded-3xl p-6 shadow-xl space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">⚡</span>
+                    <h3 class="text-sm font-extrabold text-white">ChatGPT Astra Tactical Revenue Blueprint — Close First Client in 24 Hours</h3>
+                    <span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Nov 1 Early Decision Rush</span>
+                </div>
+                <span class="text-xs font-mono text-slate-400">Target: $150 Paid Pilot Today</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 space-y-1.5">
+                    <span class="font-bold text-amber-400 uppercase tracking-wider text-[10px] block">1. The Immediate Wedge</span>
+                    <p class="text-slate-300">Don't sell multi-month retainers. Sell <strong>Emergency Nov 1 Overflow Capacity</strong>. Independent counselors are drowning in ED/EA drafts right now.</p>
+                </div>
+                <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 space-y-1.5">
+                    <span class="font-bold text-emerald-400 uppercase tracking-wider text-[10px] block">2. The Easy-to-Buy Offer</span>
+                    <p class="text-slate-300"><strong>$150 Paid Pilot:</strong> 1 complete student package, sub-6h SLA, native Word OpenXML track changes (&lt;w:ins&gt;/&lt;w:del&gt;) and FERPA certificate.</p>
+                </div>
+                <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 space-y-1.5">
+                    <span class="font-bold text-blue-400 uppercase tracking-wider text-[10px] block">3. Objection Shield</span>
+                    <p class="text-slate-300"><strong>"Is this AI?":</strong> Automated checks + human calibrated sign-off. Strict IECA non-ghostwriting compliance: zero text drafting, 100% student voice preserved.</p>
+                </div>
+            </div>
         </div>
 
         <!-- Leads Table -->
