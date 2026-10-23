@@ -126,6 +126,32 @@ class WordTrackChangesEngine:
         doc.save(output_path)
         return output_path
 
+    def create_tracked_docx_from_text(self, text: str, output_path: str, line_edits: List[Dict[str, Any]]) -> str:
+        """
+        Creates a Word document directly from raw or sanitized text, applies native
+        OpenXML tracked deletions (<w:del>) and insertions (<w:ins>), and saves the deliverable.
+        """
+        doc = docx.Document()
+        paragraphs = text.split("\n\n") if "\n\n" in text else text.split("\n")
+        for p_text in paragraphs:
+            if p_text.strip():
+                doc.add_paragraph(p_text.strip())
+
+        for edit in line_edits:
+            orig = edit.get("original_text", "").strip()
+            repl = edit.get("suggested_replacement", "").strip()
+            exp = edit.get("explanation", "")
+            if not orig or not repl:
+                continue
+
+            for p in doc.paragraphs:
+                if orig in p.text:
+                    if self.apply_tracked_replacement(p, orig, repl, exp):
+                        break
+
+        doc.save(output_path)
+        return output_path
+
 
 if __name__ == "__main__":
     engine = WordTrackChangesEngine()

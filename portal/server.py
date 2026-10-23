@@ -1343,7 +1343,14 @@ async def submit_manuscript(
     docx_path = OUTPUT_DIR / docx_filename
     html_path = OUTPUT_DIR / html_filename
 
-    processor.generate_annotated_docx(sanitized_text, review_dict, str(docx_path))
+    line_edits = review_dict.get('line_edits', [])
+    if file and file.filename and file.filename.endswith('.docx'):
+        base_docx_path = OUTPUT_DIR / f'{job_id}_raw.docx'
+        base_docx_path.write_bytes(bytes_data)
+        track_engine.process_document(str(base_docx_path), str(docx_path), line_edits)
+    else:
+        track_engine.create_tracked_docx_from_text(sanitized_text, str(docx_path), line_edits)
+
     processor.generate_html_report(review_dict, str(html_path))
 
     # Step 4: Persist in Job Queue
@@ -2036,6 +2043,29 @@ async def download_file(filename: str):
     if not file_path.exists():
         return JSONResponse({"error": "File not found"}, status_code=404)
     return FileResponse(file_path, filename=filename)
+
+@app.get("/download/docx/{job_id}")
+async def download_docx_by_job_id(job_id: str):
+    with get_db() as conn:
+        row = conn.execute("SELECT docx_filename FROM submissions WHERE job_id = ?", (job_id,)).fetchone()
+    if not row or not row["docx_filename"]:
+        raise HTTPException(status_code=404, detail="Document not found for this job ID")
+    file_path = OUTPUT_DIR / row["docx_filename"]
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File missing from output directory")
+    return FileResponse(file_path, filename=row["docx_filename"])
+
+
+@app.get("/download/report/{job_id}")
+async def download_report_by_job_id(job_id: str):
+    with get_db() as conn:
+        row = conn.execute("SELECT html_filename FROM submissions WHERE job_id = ?", (job_id,)).fetchone()
+    if not row or not row["html_filename"]:
+        raise HTTPException(status_code=404, detail="Report not found for this job ID")
+    file_path = OUTPUT_DIR / row["html_filename"]
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Report file missing from output directory")
+    return FileResponse(file_path, filename=row["html_filename"])
 
 
 
