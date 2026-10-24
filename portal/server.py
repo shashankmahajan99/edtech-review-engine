@@ -1851,6 +1851,7 @@ async def reviewer_workbench(request: Request):
                         Request UPI Payout
                     </button>
                 </form>''' if pending_payout_inr > 0 else ''}
+                <a href="/thinkingstorm" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-lg shadow-purple-500/20">ThinkingStorm Studio</a>
                 <a href="/logout" class="text-xs text-red-400 hover:underline pl-4 border-l border-slate-700">Sign Out</a>
             </div>
         </div>
