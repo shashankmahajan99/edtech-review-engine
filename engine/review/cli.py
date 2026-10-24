@@ -20,7 +20,7 @@ from .analysis import analyze
 from .docmodel import load_document
 from .pipeline import PipelineError, review_document
 from .selection import select_comments
-from .voice import compose_all
+from .persona import compose_all
 
 
 def _print_result(result) -> None:

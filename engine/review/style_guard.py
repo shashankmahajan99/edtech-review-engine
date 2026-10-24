@@ -18,7 +18,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .voice import BANNED_PHRASES
+from .persona import BANNED_PHRASES
 
 MIN_BURSTINESS_STD = 2.6
 MAX_MEAN_SENTENCE = 32.0

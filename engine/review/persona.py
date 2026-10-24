@@ -1,4 +1,4 @@
-"""Deterministic, human-voiced comment composition.
+"""Deterministic comment composition in a human reviewer persona.
 
 Each rule owns several phrasings mined from the reviewer's real deliverables: a
 diagnosis that names what is happening in the sentence, then one concrete
@@ -688,3 +688,4 @@ def _strip_leading_label(body: str, category: str) -> str:
     if rest[:1].isupper() or rest[:1] in "\u201c\"'":
         return rest
     return body
+

@@ -41,7 +41,7 @@ DOMAIN_SETS = {
     "statement": [
         "Narrative and Opening",
         "Specificity and Fit",
-        "Voice and Mechanics",
+        "Style and Mechanics",
     ],
     "academic": [
         "Thesis and Main Argument",
@@ -272,7 +272,7 @@ def _statement_bodies(result: AnalysisResult) -> tuple[list[str], list[str], lis
         "The draft is readable, and a final proofreading pass will take care of the smaller mechanical "
         "points flagged in the margin. Read it aloud once; the places where you stumble are the places to "
         "revise.",
-        "Your voice comes through in the writing, which matters more in this genre than in an academic "
+        "Your own perspective comes through in the writing, which matters more in this genre than in an academic "
         "essay. Keep the sentences varied and concrete, and clear the mechanical notes in the margin before "
         "you submit.",
     ]
@@ -310,7 +310,7 @@ def compose_endnote(model: DocumentModel, result: AnalysisResult,
         body1 = pick(st1, 3)
         body2 = pick(st2, 11)
         body3 = pick(st3, 29)
-        mechanics_f = None  # already covered by the voice/mechanics paragraph
+        mechanics_f = None  # already covered by the style/mechanics paragraph
 
     if mechanics_f is not None and essay_type != "rhetorical":
         tail = pick([
@@ -336,3 +336,4 @@ def compose_endnote(model: DocumentModel, result: AnalysisResult,
     ]
     words = sum(len(p.split()) for p in paragraphs)
     return Endnote(paragraphs=paragraphs, domains=domains, word_count=words)
+

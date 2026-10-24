@@ -20,7 +20,7 @@ python -m unittest discover -s tests -v            # full test suite
 ```
 
 Every deliverable passes a release gate (text preservation, anchor integrity,
-link allow-list, comment voice, AI-style proxies, endnote typography) or it is
+link allow-list, comment register, AI-style proxies, endnote typography) or it is
 not written at all. Full design and operations:
 [`docs/THINKINGSTORM_PIPELINE.md`](docs/THINKINGSTORM_PIPELINE.md).
 

@@ -12,7 +12,7 @@ Replicates the complete workflow of ThinkingStorm writing center reviews:
    - Duplicate prevention (updates existing endnote rather than duplicating IDs).
 4. Dual Mode: Autonomous Socratic AI generation OR exact custom input injection from prompt.
 5. Zero tampering of original student text, preserving 100% academic formatting.
-6. Guaranteed 0% AI detection on GPTZero via high burstiness & humanized voice.
+6. Legacy generator, superseded by engine/review (deterministic persona pipeline).
 """
 
 import re

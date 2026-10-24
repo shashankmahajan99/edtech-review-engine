@@ -17,7 +17,7 @@ from .docmodel import DocumentModel, load_document
 from .endnote import Endnote, compose_endnote
 from .selection import SelectedComment, select_comments
 from .validate import ValidationReport, validate_deliverable
-from .voice import compose_all
+from .persona import compose_all
 from .writer import can_anchor, explode_runs, normalize_span, write_deliverable
 
 

@@ -22,7 +22,7 @@ from engine.review.segmenter import split_sentences  # noqa: E402
 from engine.review.selection import select_comments  # noqa: E402
 from engine.review.style_guard import check_text_block, repeated_ngram_ratio  # noqa: E402
 from engine.review.validate import _anchors, _comment_body  # noqa: E402
-from engine.review.voice import BANNED_PHRASES, compose_all  # noqa: E402
+from engine.review.persona import BANNED_PHRASES, compose_all  # noqa: E402
 from tools.extract_review import extract  # noqa: E402
 
 FIXTURES = ROOT / "tests" / "fixtures"
@@ -289,7 +289,7 @@ class TestVoiceTemplates(unittest.TestCase):
     ]
 
     def test_templates_do_not_start_with_a_category_label(self):
-        from engine.review.voice import TEMPLATES
+        from engine.review.persona import TEMPLATES
 
         for rule, variants in TEMPLATES.items():
             for lead, _advice in variants:

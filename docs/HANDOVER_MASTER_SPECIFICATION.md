@@ -701,10 +701,12 @@ endnote, and the gate metrics for QA audit.
 A failed gate deletes the deliverable and returns the reason. Nothing half-correct
 is ever shipped.
 
-### 14.3 Voice model
+### 14.3 Persona model (text register)
 
-Forty-five detectors feed a phrase library mined from the three reference
-deliverables (Janeen, Andrea, Kiran), stored in `style_corpus/exemplars.json`.
+"Persona" means the written register — diction, rhythm, directness — not audio or
+speech; there is no TTS or voice cloning in this pipeline. Forty-five detectors
+feed a phrase library mined from the three reference deliverables (Janeen, Andrea,
+Kiran), stored in `style_corpus/exemplars.json`.
 Variant selection is `sha1(fingerprint | rule | position)`: reproducible per
 document, effectively unique across documents. Comments deliberately alternate
 short commands with longer two-clause explanations; uniform length is the clearest
@@ -716,7 +718,7 @@ Argumentative, APA research, rhetorical analysis, admissions personal statement,
 and generic academic prose are classified before rules run. Statements receive
 cliché-opening, generic-praise, specific-fit, and announced-conclusion checks
 instead of thesis rules, and a `Narrative and Opening / Specificity and Fit /
-Voice and Mechanics` endnote.
+Style and Mechanics` endnote.
 
 ### 14.5 Operations
 

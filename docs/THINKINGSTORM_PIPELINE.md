@@ -35,7 +35,7 @@ raw.docx
   ├─ segmenter     abbreviation-safe sentences with exact offsets
   ├─ analysis      logical blocks → 40+ high-precision findings
   ├─ selection     budget, category caps, overlap checks, merged labels
-  ├─ voice         human-voiced comment text (deterministic variant choice)
+  ├─ persona       human-register comment text (deterministic variant choice)
   ├─ endnote       three personalised domain paragraphs
   ├─ writer        OpenXML: run splitting, comments part, endnote part
   └─ validate      RELEASE GATE — any failure deletes the deliverable
@@ -151,18 +151,35 @@ The engine classifies the draft before applying rules:
 | `academic` | fallback | thesis, evidence, structure |
 
 Personal statements skip thesis rules (a statement argues for a person, not a
-proposition) and use the `Narrative and Opening / Specificity and Fit / Voice and
+proposition) and use the `Narrative and Opening / Specificity and Fit / Style and
 Mechanics` endnote domains.
 
 ---
 
-## 7. The reviewer voice
+## 7. The reviewer persona (text register)
+
+"Persona" here means **how the text sounds on the page** — diction, sentence
+rhythm, directness, specificity — not audio, speech, or an impersonated person.
+There is no TTS, no audio, and no voice cloning anywhere in this pipeline.
+
+The persona exists for one reason: reviewer comments and an endnote letter that
+read like generated text can be flagged by AI detectors, which would undermine
+the deliverable. The controls are stylometric:
+
+- no LLM vocabulary (`delve`, `tapestry`, `furthermore`, ...);
+- sentence lengths deliberately uneven, inside the human band measured on the
+  three real deliverables;
+- no repeated 5-grams, no repeated opening phrases, no two same-sized notes in a
+  row;
+- specific, local detail in every note (the actual vague word, date, citation);
+- different wording per document, reproducible for the same document.
+
 Comments are mined from the three reference deliverables in
 `style_corpus/exemplars.json` (Janeen, Andrea, Kiran). The rules:
 
 - diagnosis first, then one concrete directive; occasionally a Socratic question;
 - 20-45 words typical, but deliberately uneven — a short command next to a
-  two-clause explanation. Uniform length is the clearest machine tell;
+  two-clause explanation;
 - address the student directly ("you", "your paragraph"), never the document;
 - name the actual thing: the vague word, the date, the citation, the studies;
 - no hedging boilerplate ("it is important to note"), no LLM vocabulary.
@@ -207,7 +224,7 @@ automatic mode:
 
 1. Add the detector to `engine/review/analysis.py`, returning a `Finding` with a
    precise span, category, priority, and facts.
-2. Add 3-4 phrasings to `TEMPLATES` in `engine/review/voice.py` using the facts.
+2. Add 3-4 phrasings to `TEMPLATES` in `engine/review/persona.py` using the facts.
 3. Map the category to a knowledge-base article in `engine/review/links.py`.
 4. Add a fixture assertion in `tests/test_review_pipeline.py`.
 5. Run `selftest`; a new rule that fires on the header or on citations is almost
