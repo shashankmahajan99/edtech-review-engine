@@ -39,6 +39,34 @@ from payments.stripe_gateway import StripeGateway, PACKAGES
 
 app = FastAPI(title="Apex Academic Review Desk", version="3.5.0")
 
+def normalize_extracted_text(raw: str) -> str:
+    """Reconstitutes fragmented PDF/text extractions into clean, natural paragraphs."""
+    if not raw or not raw.strip():
+        return ""
+    lines = [l.strip() for l in raw.splitlines() if l.strip()]
+    if not lines:
+        return ""
+    avg_len = sum(len(l) for l in lines) / len(lines)
+    if avg_len < 25:
+        # Word-per-line fragmentation from pypdf
+        full_text = " ".join(lines)
+        full_text = re.sub(r'\s+', ' ', full_text)
+        sentences = re.split(r'(?<=[.!?])\s+(?=[A-Z])', full_text)
+        paragraphs = []
+        current_p = []
+        for s in sentences:
+            current_p.append(s)
+            if len(current_p) >= 3 or len(" ".join(current_p)) > 350:
+                paragraphs.append(" ".join(current_p))
+                current_p = []
+        if current_p:
+            paragraphs.append(" ".join(current_p))
+        return "\n\n".join(paragraphs)
+    else:
+        paras = [re.sub(r'\s+', ' ', p.strip()) for p in raw.split("\n\n") if p.strip()]
+        return "\n\n".join(paras)
+
+
 OUTPUT_DIR = PROJECT_ROOT / "output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = PROJECT_ROOT / "orchestrator" / "desk_jobs.db"
@@ -131,6 +159,37 @@ async def login_page(request: Request, error: str = ""):
         </div>
 
         {f'<div class="bg-red-500/20 border border-red-500/30 text-red-400 text-xs p-3 rounded-xl mb-6 text-center">{error}</div>' if error else ''}
+
+        <!-- 1-Click Instant Login Cards -->
+        <div class="bg-slate-900/80 border border-slate-700/80 rounded-2xl p-4 mb-6 space-y-2.5">
+            <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400 block font-bold text-center">⚡ 1-Click Instant Access</span>
+            <div class="grid grid-cols-3 gap-2">
+                <form action="/login" method="post" class="w-full">
+                    <input type="hidden" name="email" value="reviewer@apexreview.co">
+                    <input type="hidden" name="password" value="ReviewerPass2026!">
+                    <button type="submit" class="w-full bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 text-emerald-300 font-bold text-xs py-2 rounded-xl transition">
+                        ✍️ Reviewer
+                    </button>
+                </form>
+                <form action="/login" method="post" class="w-full">
+                    <input type="hidden" name="email" value="admin@apexreview.co">
+                    <input type="hidden" name="password" value="AdminPass2026!">
+                    <button type="submit" class="w-full bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/50 text-amber-300 font-bold text-xs py-2 rounded-xl transition">
+                        🏛️ Admin
+                    </button>
+                </form>
+                <form action="/login" method="post" class="w-full">
+                    <input type="hidden" name="email" value="counselor@ivywise.com">
+                    <input type="hidden" name="password" value="CounselorPass2026!">
+                    <button type="submit" class="w-full bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/50 text-indigo-300 font-bold text-xs py-2 rounded-xl transition">
+                        🏢 Counselor
+                    </button>
+                </form>
+            </div>
+            <div class="text-[10px] text-slate-400 text-center font-mono">
+                Credentials: <span class="text-emerald-300">reviewer@apexreview.co</span> / <span class="text-slate-300">password</span>
+            </div>
+        </div>
 
         <form action="/login" method="post" class="space-y-4">
             <div>
@@ -1311,12 +1370,16 @@ async def submit_manuscript(
         try:
             if file.filename.endswith(".docx"):
                 doc = docx.Document(io.BytesIO(bytes_data))
-                content = "\n\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+                raw_c = "\n\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+                content = normalize_extracted_text(raw_c)
             elif file.filename.endswith(".pdf"):
                 reader = pypdf.PdfReader(io.BytesIO(bytes_data))
-                content = "\n\n".join([p.extract_text() or "" for p in reader.pages if p.extract_text()])
+                extracted_pages = [p.extract_text() or "" for p in reader.pages if p.extract_text()]
+                raw_c = "\n\n".join(extracted_pages)
+                content = normalize_extracted_text(raw_c)
             else:
-                content = bytes_data.decode("utf-8", errors="ignore")
+                raw_c = bytes_data.decode("utf-8", errors="ignore")
+                content = normalize_extracted_text(raw_c)
         except Exception as e:
             return HTMLResponse(f"<h3>Error: Could not parse document '{file.filename}'. Please verify the file is a valid .docx or .pdf document.</h3>", status_code=400)
 
@@ -1372,6 +1435,11 @@ async def submit_manuscript(
             html_filename, target_institution, counselor_brief, word_count, now
         ))
 
+    return RedirectResponse(url=f"/client/status/{job_id}", status_code=303)
+
+
+@app.get("/status/{job_id}")
+async def status_redirect(job_id: str):
     return RedirectResponse(url=f"/client/status/{job_id}", status_code=303)
 
 
