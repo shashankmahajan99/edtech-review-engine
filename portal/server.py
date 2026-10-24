@@ -1499,12 +1499,15 @@ async def client_status(job_id: str):
             </p>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <a href="/download/{row['docx_filename']}" class="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-6 rounded-xl transition text-xs">
-                📥 Download Annotated Word Doc (.docx)
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <a href="/download/commented/{row['job_id']}" class="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl transition text-xs text-center shadow-lg">
+                💬 Download Trivium Commented (.docx)
             </a>
-            <a href="/download/{row['html_filename']}" target="_blank" class="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3.5 px-6 rounded-xl transition text-xs">
-                👁️ View Executive Rubric Report
+            <a href="/download/docx/{row['job_id']}" class="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-4 rounded-xl transition text-xs text-center shadow-lg">
+                ✍️ Download Admissions Redline (.docx)
+            </a>
+            <a href="/download/report/{row['job_id']}" target="_blank" class="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3.5 px-4 rounded-xl transition text-xs text-center">
+                👁️ View Rubric Scorecard
             </a>
         </div>
 
@@ -2127,6 +2130,20 @@ async def download_file(filename: str):
     if not file_path.exists():
         return JSONResponse({"error": "File not found"}, status_code=404)
     return FileResponse(file_path, filename=filename)
+
+@app.get("/download/commented/{job_id}")
+async def download_commented_docx(job_id: str):
+    # Locate {job_id}_*commented.docx
+    for candidate in OUTPUT_DIR.iterdir():
+        if candidate.name.startswith(f"{job_id}_") and "commented" in candidate.name and candidate.name.endswith(".docx"):
+            return FileResponse(candidate, filename=candidate.name)
+    # Check if raw commented replica exists in output
+    for candidate in OUTPUT_DIR.iterdir():
+        if "commented" in candidate.name and candidate.name.endswith(".docx"):
+            return FileResponse(candidate, filename=candidate.name)
+    # Fallback to standard docx
+    return await download_docx_by_job_id(job_id)
+
 
 @app.get("/download/docx/{job_id}")
 async def download_docx_by_job_id(job_id: str):
