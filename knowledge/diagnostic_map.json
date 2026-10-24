@@ -1,0 +1,1184 @@
+{
+ "entries": [
+  {
+   "id": "THESIS_CLAIM",
+   "area": "thesis",
+   "move_id": "thesis",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "thesis_missing",
+    "thesis_vague",
+    "statement_generic_claim",
+    "thesis_rhetorical_missing",
+    "thesis_and_grammar"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "THESIS_REASON",
+   "area": "thesis",
+   "move_id": "thesis",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "thesis_no_preview"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "THESIS_SCOPE",
+   "area": "thesis",
+   "move_id": "thesis",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "thesis_spread"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "THESIS_POSITION",
+   "area": "thesis",
+   "move_id": "thesis",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "thesis_missing"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "INTRO_STATUS",
+   "area": "introduction",
+   "move_id": "introduction",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "intro_generic"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "INTRO_PROBLEM",
+   "area": "introduction",
+   "move_id": "introduction",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "intro_generic"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "INTRO_STAKES",
+   "area": "introduction",
+   "move_id": "introduction",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "intro_generic"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "INTRO_HOOK",
+   "area": "introduction",
+   "move_id": "introduction",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "intro_generic",
+    "statement_cliche_opener"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "BODY_STRUCTURE",
+   "area": "organization",
+   "move_id": "organization",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "para_no_claim",
+    "topic_evidence_opener"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "OUTLINE_ORDER",
+   "area": "organization",
+   "move_id": "organization",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "paragraph_overlong",
+    "para_drift"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "TOPIC_MAIN",
+   "area": "topic_sentences",
+   "move_id": "topic_sentences",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "para_no_claim",
+    "topic_evidence_opener"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "TOPIC_THESIS",
+   "area": "topic_sentences",
+   "move_id": "topic_sentences",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "topic_evidence_opener"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "TOPIC_COMPARE",
+   "area": "topic_sentences",
+   "move_id": "topic_sentences",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "requires comparing two works named in the paragraph"
+  },
+  {
+   "id": "CONCLUSION_SYNTHESIS",
+   "area": "conclusion",
+   "move_id": "conclusion",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "conclusion_summary",
+    "conclusion_and_fragments",
+    "conclusion_and_punctuation",
+    "conclusion_announced"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "CONCLUSION_NEW",
+   "area": "conclusion",
+   "move_id": "conclusion",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "conclusion_thin"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "CONCLUSION_STAKES",
+   "area": "conclusion",
+   "move_id": "conclusion",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "conclusion_thin"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "TRANSITION_LOGIC",
+   "area": "transitions",
+   "move_id": "transitions",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "transition_abrupt"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "TRANSITION_MISMATCH",
+   "area": "transitions",
+   "move_id": "transitions",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "transition_abrupt"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "LOGIC_INDUCTION",
+   "area": "logic",
+   "move_id": "logic",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "semantic reasoning"
+  },
+  {
+   "id": "LOGIC_DEDUCTION",
+   "area": "logic",
+   "move_id": "logic",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "semantic reasoning"
+  },
+  {
+   "id": "LOGIC_CAUSATION",
+   "area": "logic",
+   "move_id": "logic",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "semantic reasoning"
+  },
+  {
+   "id": "LOGIC_FALSE_CHOICE",
+   "area": "logic",
+   "move_id": "logic",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "semantic reasoning"
+  },
+  {
+   "id": "LOGIC_STRAW",
+   "area": "logic",
+   "move_id": "logic",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "semantic reasoning"
+  },
+  {
+   "id": "LOGIC_PICKING",
+   "area": "logic",
+   "move_id": "logic",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "semantic reasoning"
+  },
+  {
+   "id": "BIAS_UNSUPPORTED",
+   "area": "bias",
+   "move_id": "bias",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "semantic judgement"
+  },
+  {
+   "id": "BIAS_GROUPS",
+   "area": "bias",
+   "move_id": "bias",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "semantic judgement with group sensitivity"
+  },
+  {
+   "id": "EVIDENCE_CONTEXT",
+   "area": "evidence",
+   "move_id": "evidence",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "study_listing"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "EVIDENCE_ANALYSIS",
+   "area": "analysis",
+   "move_id": "analysis",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "evidence_no_analysis"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "EVIDENCE_SUPPORT",
+   "area": "evidence",
+   "move_id": "evidence",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "para_unsupported"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "QUOTE_OVERUSE",
+   "area": "evidence",
+   "move_id": "evidence",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "requires source/quotation boundary verification"
+  },
+  {
+   "id": "QUOTE_PARAPHRASE",
+   "area": "evidence",
+   "move_id": "evidence",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "requires source text to compare wording"
+  },
+  {
+   "id": "QUOTE_SUMMARY",
+   "area": "evidence",
+   "move_id": "evidence",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "requires source text to compare wording"
+  },
+  {
+   "id": "PLAGIARISM_WARNING",
+   "area": "evidence",
+   "move_id": "evidence",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "external verification only; never asserted offline"
+  },
+  {
+   "id": "SOURCE_TYPE",
+   "area": "evidence",
+   "move_id": "evidence",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "requires source metadata"
+  },
+  {
+   "id": "STAT_RELEVANCE",
+   "area": "statistics",
+   "move_id": "statistics",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "evidence_no_analysis"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "STAT_CLARITY",
+   "area": "statistics",
+   "move_id": "statistics",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "evidence_no_analysis"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "STAT_INTERPRET",
+   "area": "statistics",
+   "move_id": "statistics",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "evidence_no_analysis"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "STAT_EXAGGERATION",
+   "area": "statistics",
+   "move_id": "statistics",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "requires study sample and claim comparison"
+  },
+  {
+   "id": "APA_NARRATIVE_DATE",
+   "area": "apa",
+   "move_id": "apa",
+   "level": "lower_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "requires reference list to resolve date"
+  },
+  {
+   "id": "APA_QUOTE_LOCATOR",
+   "area": "apa",
+   "move_id": "apa",
+   "level": "lower_order",
+   "status": "mapped",
+   "rules": [
+    "quote_no_page"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "APA_REF_MATCH",
+   "area": "apa",
+   "move_id": "apa",
+   "level": "lower_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "requires full reference list reconciliation"
+  },
+  {
+   "id": "APA_REF_FORMAT",
+   "area": "apa",
+   "move_id": "apa",
+   "level": "lower_order",
+   "status": "mapped",
+   "rules": [
+    "apa_database"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "APA_REF_LAYOUT",
+   "area": "apa",
+   "move_id": "apa",
+   "level": "lower_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "requires layout inspection of the reference list"
+  },
+  {
+   "id": "APA_TITLE",
+   "area": "apa",
+   "move_id": "apa",
+   "level": "lower_order",
+   "status": "mapped",
+   "rules": [
+    "apa_instructor_missing",
+    "apa_course_name"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "APA_ABSTRACT",
+   "area": "apa",
+   "move_id": "apa",
+   "level": "lower_order",
+   "status": "mapped",
+   "rules": [
+    "abstract_intro"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "MLA_HEADING",
+   "area": "mla",
+   "move_id": "mla",
+   "level": "lower_order",
+   "status": "mapped",
+   "rules": [
+    "mla_heading_order",
+    "mla_heading_same_line"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "MLA_HEADER",
+   "area": "mla",
+   "move_id": "mla",
+   "level": "lower_order",
+   "status": "mapped",
+   "rules": [
+    "mla_header_missing"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "MLA_SPACING",
+   "area": "mla",
+   "move_id": "mla",
+   "level": "lower_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "requires layout inspection (spacing/margins)"
+  },
+  {
+   "id": "MLA_PARENT",
+   "area": "mla",
+   "move_id": "mla",
+   "level": "lower_order",
+   "status": "mapped",
+   "rules": [
+    "mla_container_italics",
+    "mla_raw_url_container"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "MLA_WORKS",
+   "area": "mla",
+   "move_id": "mla",
+   "level": "lower_order",
+   "status": "mapped",
+   "rules": [
+    "works_cited_top_margin"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "MLA_QUOTE",
+   "area": "mla",
+   "move_id": "mla",
+   "level": "lower_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "requires block-quotation layout and line count"
+  },
+  {
+   "id": "MLA_TITLE",
+   "area": "mla",
+   "move_id": "mla",
+   "level": "lower_order",
+   "status": "mapped",
+   "rules": [
+    "mla_title_case"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "CHICAGO_STYLE",
+   "area": "chicago",
+   "move_id": "chicago",
+   "level": "lower_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "no Chicago detector implemented"
+  },
+  {
+   "id": "CHICAGO_NOTES",
+   "area": "chicago",
+   "move_id": "chicago",
+   "level": "lower_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "no Chicago detector implemented"
+  },
+  {
+   "id": "CHICAGO_SHORT",
+   "area": "chicago",
+   "move_id": "chicago",
+   "level": "lower_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "no Chicago detector implemented"
+  },
+  {
+   "id": "CHICAGO_AUTHOR_DATE",
+   "area": "chicago",
+   "move_id": "chicago",
+   "level": "lower_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "no Chicago detector implemented"
+  },
+  {
+   "id": "CHICAGO_LAYOUT",
+   "area": "chicago",
+   "move_id": "chicago",
+   "level": "lower_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "no Chicago detector implemented"
+  },
+  {
+   "id": "GRAM_PASSIVE_AGENCY",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "mapped",
+   "rules": [
+    "para_passive"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "GRAM_APOSTROPHE_USAGE",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no apostrophe parser"
+  },
+  {
+   "id": "GRAM_APPOSITIVE_PUNCTUATION",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no appositive parser"
+  },
+  {
+   "id": "GRAM_ARTICLE_SELECTION",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no article parser"
+  },
+  {
+   "id": "GRAM_CAPITALIZATION_CONSISTENCY",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no capitalisation rule"
+  },
+  {
+   "id": "GRAM_SEMICOLON_CLAUSES",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no semicolon parser"
+  },
+  {
+   "id": "GRAM_INTRODUCTORY_COMMA",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no introductory-comma rule"
+  },
+  {
+   "id": "GRAM_INDEPENDENT_CLAUSE_COMMA",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no clause parser"
+  },
+  {
+   "id": "GRAM_COMMA_SPLICE",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "mapped",
+   "rules": [
+    "comma_splice"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "GRAM_SUBORDINATE_CLAUSE",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no clause parser"
+  },
+  {
+   "id": "GRAM_COMPOUND_PUNCTUATION",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no clause parser"
+  },
+  {
+   "id": "GRAM_HYPHENATION",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no hyphenation rule"
+  },
+  {
+   "id": "GRAM_END_MARK",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "mapped",
+   "rules": [
+    "title_period"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "GRAM_NARRATIVE_PERSON",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no point-of-view rule"
+  },
+  {
+   "id": "GRAM_FRAGMENT",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "mapped",
+   "rules": [
+    "fragment"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "GRAM_VERBALS",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no verbals parser"
+  },
+  {
+   "id": "GRAM_HOMOPHONE",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no homophone dictionary"
+  },
+  {
+   "id": "GRAM_VERB_FORM",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no irregular-verb parser"
+  },
+  {
+   "id": "GRAM_DANGLING_MODIFIER",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no modifier parser"
+  },
+  {
+   "id": "GRAM_MISPLACED_MODIFIER",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no modifier parser"
+  },
+  {
+   "id": "GRAM_PARALLEL_STRUCTURE",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no parallelism rule"
+  },
+  {
+   "id": "GRAM_PART_OF_SPEECH",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no POS tagger"
+  },
+  {
+   "id": "GRAM_PREPOSITION_CHOICE",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no preposition rule"
+  },
+  {
+   "id": "GRAM_PRONOUN_ANTECEDENT",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "mapped",
+   "rules": [
+    "vague_pronoun"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "GRAM_PRONOUN_CASE",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no pronoun-case rule"
+  },
+  {
+   "id": "GRAM_RUN_ON",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no run-on rule"
+  },
+  {
+   "id": "GRAM_AGREEMENT",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "mapped",
+   "rules": [
+    "subject_verb"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "GRAM_TENSE_CONSISTENCY",
+   "area": "grammar",
+   "move_id": "grammar",
+   "level": "lower_order",
+   "status": "no_rule",
+   "rules": [],
+   "reason": "no tense rule"
+  },
+  {
+   "id": "ABSTRACT_TYPE",
+   "area": "abstract",
+   "move_id": "abstract",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "abstract_intro"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "ABSTRACT_STANDALONE",
+   "area": "abstract",
+   "move_id": "abstract",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "abstract_intro"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "ABSTRACT_ELEMENTS",
+   "area": "abstract",
+   "move_id": "abstract",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "abstract_intro"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "ANNOT_SUMMARY",
+   "area": "annotation",
+   "move_id": "annotation",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "no annotated-bibliography detector implemented"
+  },
+  {
+   "id": "ANNOT_CREDIBILITY",
+   "area": "annotation",
+   "move_id": "annotation",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "requires source metadata"
+  },
+  {
+   "id": "ANNOT_RELEVANCE",
+   "area": "annotation",
+   "move_id": "annotation",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "requires research question"
+  },
+  {
+   "id": "ANNOT_STRUCTURE",
+   "area": "annotation",
+   "move_id": "annotation",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "no annotated-bibliography detector implemented"
+  },
+  {
+   "id": "RESEARCH_ARGUMENT",
+   "area": "research",
+   "move_id": "research",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "semantic classification of research stance"
+  },
+  {
+   "id": "RESEARCH_ANALYTIC",
+   "area": "research",
+   "move_id": "research",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "semantic classification of research stance"
+  },
+  {
+   "id": "RESEARCH_CONFIRMBIAS",
+   "area": "research",
+   "move_id": "research",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "requires source corpus comparison"
+  },
+  {
+   "id": "PERSUASIVE_OPPOSITION",
+   "area": "argument",
+   "move_id": "logic",
+   "level": "higher_order",
+   "status": "mapped",
+   "rules": [
+    "counterargument_missing"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "DESCRIPTIVE_SPECIFIC",
+   "area": "genre",
+   "move_id": "genre",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "semantic judgement of descriptive detail"
+  },
+  {
+   "id": "BUSINESS_PURPOSE",
+   "area": "genre",
+   "move_id": "genre",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "no cover-letter detector implemented"
+  },
+  {
+   "id": "BUSINESS_FIT",
+   "area": "genre",
+   "move_id": "genre",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "requires job advert"
+  },
+  {
+   "id": "BUSINESS_END",
+   "area": "genre",
+   "move_id": "genre",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "no cover-letter detector implemented"
+  },
+  {
+   "id": "SOCIAL_METHOD",
+   "area": "research",
+   "move_id": "research",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "requires method section reading"
+  },
+  {
+   "id": "NURSING_PRECISION",
+   "area": "genre",
+   "move_id": "genre",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "clinical accuracy requires human review"
+  },
+  {
+   "id": "NURSING_VOICE",
+   "area": "genre",
+   "move_id": "genre",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "clinical accuracy requires human review"
+  },
+  {
+   "id": "FORMAL_DICTION",
+   "area": "clarity",
+   "move_id": "clarity",
+   "level": "lower_order",
+   "status": "mapped",
+   "rules": [
+    "informal_diction"
+   ],
+   "reason": ""
+  },
+  {
+   "id": "REVISION_PRIORITY",
+   "area": "organization",
+   "move_id": "organization",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "editorial prioritisation, not a text feature"
+  },
+  {
+   "id": "LIT_THEME",
+   "area": "literary_analysis",
+   "move_id": "literary_analysis",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "literary reading requires the text"
+  },
+  {
+   "id": "LIT_ALLEGORY",
+   "area": "literary_analysis",
+   "move_id": "literary_analysis",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "literary reading requires the text"
+  },
+  {
+   "id": "LIT_CHARACTER",
+   "area": "literary_analysis",
+   "move_id": "literary_analysis",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "literary reading requires the text"
+  },
+  {
+   "id": "LIT_IMAGERY",
+   "area": "literary_analysis",
+   "move_id": "literary_analysis",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "literary reading requires the text"
+  },
+  {
+   "id": "LIT_LITOTES",
+   "area": "literary_analysis",
+   "move_id": "literary_analysis",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "literary reading requires the text"
+  },
+  {
+   "id": "LIT_METONYMY",
+   "area": "literary_analysis",
+   "move_id": "literary_analysis",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "literary reading requires the text"
+  },
+  {
+   "id": "LIT_PERSONIFICATION",
+   "area": "literary_analysis",
+   "move_id": "literary_analysis",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "literary reading requires the text"
+  },
+  {
+   "id": "LIT_PLOT",
+   "area": "literary_analysis",
+   "move_id": "literary_analysis",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "literary reading requires the text"
+  },
+  {
+   "id": "LIT_POV",
+   "area": "literary_analysis",
+   "move_id": "literary_analysis",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "literary reading requires the text"
+  },
+  {
+   "id": "LIT_SETTING",
+   "area": "literary_analysis",
+   "move_id": "literary_analysis",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "literary reading requires the text"
+  },
+  {
+   "id": "LIT_SIMILE",
+   "area": "literary_analysis",
+   "move_id": "literary_analysis",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "literary reading requires the text"
+  },
+  {
+   "id": "LIT_STRUCTURE",
+   "area": "literary_analysis",
+   "move_id": "literary_analysis",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "literary reading requires the text"
+  },
+  {
+   "id": "LIT_TONE_MOOD",
+   "area": "literary_analysis",
+   "move_id": "literary_analysis",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "literary reading requires the text"
+  },
+  {
+   "id": "LIT_SYMBOLISM",
+   "area": "literary_analysis",
+   "move_id": "literary_analysis",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "literary reading requires the text"
+  },
+  {
+   "id": "LIT_SYNECDOCHE",
+   "area": "literary_analysis",
+   "move_id": "literary_analysis",
+   "level": "higher_order",
+   "status": "human_only",
+   "rules": [],
+   "reason": "literary reading requires the text"
+  }
+ ]
+}

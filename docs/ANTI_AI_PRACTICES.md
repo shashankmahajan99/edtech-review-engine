@@ -78,6 +78,41 @@ regenerated from that answer rather than hand-written. Rebuild the brief with:
 python tools/export_astra_brief.py
 ```
 
+## What did not work, and why
+
+The corpus-calibrated distribution (one-sentence notes, hedges, questions,
+length variance, banned vocabulary) is real, and generated comments now match
+those statistics. It did **not** move the detector. The reason is structural:
+the text is still assembled from templates. A detector does not read the
+statistics we tuned; it reads token-level predictability, and template
+recombination stays predictable no matter how the sentences are varied.
+
+Two consequences:
+
+1. Phrase-level tuning has a ceiling. More hedge words or question endings
+   cannot make template prose read as human-written, because the content is not
+   produced for this student.
+2. A detector score on 10–20 short comments is not a stable authorship measure.
+   Formal, error-free academic feedback is exactly the register these tools
+   over-flag, including human-written feedback.
+
+## The baseline control
+
+The Studio now has **Copy human baseline**. It copies three verbatim comments
+from the reviewer corpus plus one endnote letter. Paste that into the same
+detector, in the same way, alongside the generated text.
+
+- If the human baseline also scores as AI, the detector is scoring register,
+  not authorship, and a 100% result on generated comments is not evidence of
+  anything.
+- If the human baseline scores low and generated text scores high, the gap is
+  real and the next step is retrieval of human-written comments with manual
+  selection — not more template tuning.
+
+Until that comparison is run, any claim about detector performance is
+unsupported. We cannot call GPTZero from this repository, so the repository does
+not make that claim.
+
 ## Honest limits
 
 - GPTZero has no public API, so this repository cannot score its own output.

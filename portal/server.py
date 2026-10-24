@@ -4488,6 +4488,33 @@ https://progress-trim-capable-introduce.trycloudflare.com"""
 </html>"""
 
 
+@app.get("/api/voice/baseline")
+async def voice_baseline():
+    """Real reviewer comments + letter excerpt, for a detector control test.
+
+    Paste this into GPTZero alongside generated output. If the human text scores
+    the same, the detector is reacting to the academic-feedback register rather
+    than to authorship, and a 100% result on generated comments is not evidence.
+    """
+    corpus_path = Path("style_corpus/voice_corpus.json")
+    if not corpus_path.exists():
+        raise HTTPException(status_code=404, detail="voice corpus not built")
+    data = json.loads(corpus_path.read_text(encoding="utf-8"))
+    comments = [c for c in data.get("comments", []) if c.get("label")][:3]
+    blocks = []
+    for i, comment in enumerate(comments, 1):
+        quote = " ".join(str(comment.get("quote", "")).split())[:140]
+        blocks.append(f'{i}. {comment["label"]}: "{quote}"\n{comment["body"]}')
+    endnote = ""
+    if data.get("endnotes"):
+        endnote = data["endnotes"][0]["text"]
+    return {
+        "text": "\n\n".join(blocks) + ("\n\n" + endnote if endnote else ""),
+        "comments": len(comments),
+        "has_endnote": bool(endnote),
+    }
+
+
 @app.get("/api/health")
 async def health_check():
     with get_db() as conn:

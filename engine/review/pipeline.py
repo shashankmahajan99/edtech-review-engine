@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .analysis import AnalysisResult, analyze
+from . import diagnostics
 from .docmodel import DocumentModel, load_document
 from .endnote import Endnote, compose_endnote
 from .selection import SelectedComment, select_comments
@@ -196,6 +197,7 @@ def review_document(
                 "id": str(i),
                 "category": item.category if item.labelled else "",
                 "rule": item.finding.rule_id,
+                "diagnostic": diagnostics.for_rule(item.finding.rule_id),
                 "paragraph": item.finding.paragraph.index,
                 "quote": item.finding.quote,
                 "body": body,

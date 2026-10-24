@@ -44,6 +44,31 @@ Local rule-specific templates come first, then KB patterns that use a verified
 anchor/source/topic, then KB patterns with no draft detail. The corpus shape
 rules (one-sentence notes, hedges, questions) still apply on top.
 
+## Diagnostic coverage (120 ids)
+
+`knowledge/diagnostic_map.json` maps every KB diagnostic to the analyser:
+
+| Status | Count | Meaning |
+| --- | --- | --- |
+| `mapped` | 43 | a detected rule covers it; the comment carries the diagnostic id |
+| `human_only` | 55 | the KB marks it semantic/external (plagiarism, fallacies, literary reading, source stance, annotation credibility, Chicago, cover letters, nursing) — never asserted offline |
+| `no_rule` | 22 | a mechanical check the analyser does not implement yet (run-ons, articles, tense, punctuation sub-rules) |
+
+42 analyser rules now emit a diagnostic id; the four without one are local
+extras (`implausible_year`, `org_name_mismatch`, `para_filler`,
+`para_monotone`). Every comment in the QA JSON carries `diagnostic`, and
+`pipeline.comments` exposes it to the portal.
+
+Report or rebuild:
+
+```
+python tools/report_diagnostic_coverage.py
+python tools/build_diagnostic_map.py
+```
+
+`tests/test_diagnostics.py` asserts all 120 are classified, every mapped rule
+exists, and the status counts stay honest.
+
 ## Tests
 
 `tests/test_kb.py` validates the file, checks the 22/88/120/80 counts, verifies

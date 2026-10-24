@@ -185,6 +185,10 @@ def get_thinkingstorm_studio_html(user=None) -> str:
                   class="text-xs font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-lg transition">
             Copy endnote
           </button>
+          <button id="copyBaselineBtn" type="button"
+                  class="text-xs font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-lg transition">
+            Copy human baseline
+          </button>
           <span id="copyState" class="text-[11px] text-emerald-400"></span>
         </div>
       </div>
@@ -376,6 +380,20 @@ $('copyEndnoteBtn').addEventListener('click', async () => {{
   if (!lastData) return;
   const ok = await copyToClipboard(endnoteAsText(lastData));
   flashCopied(ok ? "Endnote copied — paste into GPTZero." : "Copy failed; select the endnote manually.");
+}});
+
+$('copyBaselineBtn').addEventListener('click', async () => {{
+  try {{
+    const resp = await fetch('/api/voice/baseline');
+    if (!resp.ok) throw new Error('baseline unavailable');
+    const data = await resp.json();
+    const ok = await copyToClipboard(data.text);
+    flashCopied(ok
+      ? "Human baseline copied — paste it too. If it flags, the detector is scoring register, not authorship."
+      : "Copy failed.");
+  }} catch (err) {{
+    flashCopied("Baseline unavailable: " + err.message);
+  }}
 }});
 
 $('reviewForm').addEventListener('submit', async (e) => {{
