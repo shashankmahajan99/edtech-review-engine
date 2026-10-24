@@ -34,6 +34,18 @@ BANNED_PHRASES = (
     "in today's fast-paced", "as an ai", "dive into", "unpack",
 )
 
+# Merge the knowledge base's banned list (v2) without losing the local one.
+BANNED_PHRASES = list(BANNED_PHRASES)
+try:
+    from .kb import banned_phrases as _kb_banned_phrases
+
+    for _phrase in _kb_banned_phrases():
+        _low = _phrase.lower()
+        if _low not in BANNED_PHRASES:
+            BANNED_PHRASES.append(_low)
+except Exception:  # the KB is optional rule data
+    pass
+
 _MONTHS = {
     1: "January", 2: "February", 3: "March", 4: "April", 5: "May", 6: "June",
     7: "July", 8: "August", 9: "September", 10: "October", 11: "November",
@@ -649,6 +661,20 @@ class CommentComposer:
                 ("This part of the draft needs another look.",
                  "Revise it so the idea is clear and fully supported."),
             ]
+        else:
+            candidates = list(candidates)
+        # Knowledge-base patterns for the matching move. Anchored/specific ones
+        # are preferred; generic ones only add variety at the end of the pool.
+        try:
+            from .kb import patterns_for_rule
+
+            kb_specific, kb_generic = patterns_for_rule(rule, self.model, finding)
+        except Exception:
+            kb_specific, kb_generic = [], []
+        if kb_specific:
+            candidates = candidates + kb_specific
+        if kb_generic:
+            candidates = candidates + kb_generic
 
         digest = int(self._variant_key(finding), 16)
         facts = self._facts(finding)

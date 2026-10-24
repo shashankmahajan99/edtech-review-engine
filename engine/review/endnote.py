@@ -292,6 +292,25 @@ def compose_endnote(model: DocumentModel, result: AnalysisResult,
     opener = OPENERS[digest % len(OPENERS)]
     closer = CLOSERS[(digest // 7) % len(CLOSERS)]
 
+    # The knowledge base's letter template (derived from the reviewer corpus)
+    # supplies the greeting body and closing for half the documents; the other
+    # half keeps the local variants so two letters never read identically.
+    try:
+        from .kb import endnote_template as _kb_endnote
+
+        kb_endnote = _kb_endnote()
+    except Exception:
+        kb_endnote = {}
+    if kb_endnote and digest % 2 == 0:
+        draft_type = {"research": "paper", "statement": "draft"}.get(essay_type, "essay")
+        opener = (f"Thank you for submitting your {draft_type}. "
+                  "There are a few areas to focus on in your next draft.")
+        topic = _title(model)
+        if topic:
+            closer = ("This is a good start for your paper. I look forward to reading how "
+                      f"your discussion of {topic} develops with these revisions. Feel free "
+                      "to reach out if you need any clarification.")
+
     findings = result.findings
     thesis_f = _top(findings, THESIS, INTRO)
     evidence_f = _top(findings, EVIDENCE, STATISTICS, ANALYSIS)
