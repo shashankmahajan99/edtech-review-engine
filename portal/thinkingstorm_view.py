@@ -174,6 +174,19 @@ def get_thinkingstorm_studio_html(user=None) -> str:
         <p id="summary" class="text-sm text-slate-300 leading-relaxed mt-5"></p>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="downloads"></div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-800 pt-4">
+          <span class="text-[10px] uppercase tracking-widest text-slate-500 mr-1">Detector check</span>
+          <button id="copyCommentsBtn" type="button"
+                  class="text-xs font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-lg transition">
+            Copy all comments
+          </button>
+          <button id="copyEndnoteBtn" type="button"
+                  class="text-xs font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-lg transition">
+            Copy endnote
+          </button>
+          <span id="copyState" class="text-[11px] text-emerald-400"></span>
+        </div>
       </div>
 
       <div class="card rounded-2xl overflow-hidden">
@@ -241,6 +254,7 @@ function stat(label, value) {{
 }}
 
 function render(data) {{
+  lastData = data;
   $('emptyState').classList.add('hidden');
   $('results').classList.remove('hidden');
 
@@ -306,6 +320,63 @@ function render(data) {{
     $('warningBanner').classList.remove('hidden');
   }}
 }}
+
+let lastData = null;
+
+function commentsAsText(d) {{
+  return (d.comments || []).map((c, i) => {{
+    const quote = (c.target_text || "").replace(/\\s+/g, " ").trim();
+    return (i + 1) + '. ' + c.category + ': "' + quote + '"\n' + c.comment_text;
+  }}).join("\n\n");
+}}
+
+function endnoteAsText(d) {{
+  if (d.endnote_text && d.endnote_text.trim()) return d.endnote_text.trim();
+  const domains = d.endnote_domains || {{}};
+  const first = (d.student_name || "Student").split(" ")[0];
+  const parts = ["Dear " + first + ",", "Thank you for submitting your paper. You need to focus on:"];
+  Object.entries(domains).forEach(([title, body]) => {{
+    parts.push(title + ":", body);
+  }});
+  parts.push("I hope this feedback is helpful.", "All the best.", d.reviewer_name || "");
+  return parts.join("\n\n").trim();
+}}
+
+async function copyToClipboard(text) {{
+  try {{
+    await navigator.clipboard.writeText(text);
+    return true;
+  }} catch (err) {{
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    let ok = false;
+    try {{ ok = document.execCommand("copy"); }} catch (ignored) {{}}
+    document.body.removeChild(area);
+    return ok;
+  }}
+}}
+
+function flashCopied(message) {{
+  const state = $('copyState');
+  state.textContent = message;
+  setTimeout(() => {{ state.textContent = ""; }}, 2500);
+}}
+
+$('copyCommentsBtn').addEventListener('click', async () => {{
+  if (!lastData) return;
+  const ok = await copyToClipboard(commentsAsText(lastData));
+  flashCopied(ok ? "Comments copied — paste into GPTZero." : "Copy failed; select the comment list manually.");
+}});
+
+$('copyEndnoteBtn').addEventListener('click', async () => {{
+  if (!lastData) return;
+  const ok = await copyToClipboard(endnoteAsText(lastData));
+  flashCopied(ok ? "Endnote copied — paste into GPTZero." : "Copy failed; select the endnote manually.");
+}});
 
 $('reviewForm').addEventListener('submit', async (e) => {{
   e.preventDefault();

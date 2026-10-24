@@ -51,6 +51,8 @@ DOMAIN_SETS = {
 }
 
 OPENERS = [
+    "Thank you for submitting your paper. There are some suggestions that may help improve the quality of the paper:",
+    "Thank you for submitting your draft. Please pay attention to the following domains:",
     "Thank you for submitting your paper. You need to focus on:",
     "Thank you for submitting your draft. Here is what I would work on first:",
     "Thank you for sharing this draft. These are the areas I would focus on:",

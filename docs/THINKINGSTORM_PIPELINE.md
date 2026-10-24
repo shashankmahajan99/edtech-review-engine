@@ -255,6 +255,14 @@ paste text, choose the style, run the review, then download:
 - **Report .html** — rubric scores, priority actions and the summary;
 - **QA report .json** — every finding, the gate metrics and the endnote.
 
+The panel also has **Copy all comments** and **Copy endnote**, which put
+paste-ready plain text on the clipboard for a detector check.
+
+The comment voice is calibrated against 25 reviewed documents (307 comments,
+Mehak and Mohini). `tools/mine_voice_corpus.py` regenerates the profile in
+`style_corpus/voice_profile.json`; the practices it drives are documented in
+`docs/ANTI_AI_PRACTICES.md`.
+
 Custom comments/endnotes live under an "Advanced" disclosure rather than a
 separate mode. The page surfaces the server's error text verbatim.
 

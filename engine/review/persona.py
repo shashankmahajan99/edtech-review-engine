@@ -172,6 +172,7 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
 
     # -- abstract -----------------------------------------------------------
     "abstract_intro": [
+        ("This reads like an introduction, not an abstract.", ""),
         ("Your abstract seems more like the introduction.",
          "An abstract should give a quick snapshot of the paper's purpose, major ideas, and conclusion."),
         ("This abstract sets up the topic but never states what the paper actually concludes.",
@@ -198,6 +199,10 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
         ("The thesis states a position but does not show the road ahead.",
          "Name the two or three points your body paragraphs will prove, in the order they appear."),
         ("Add a short preview of the points the body will prove.", ""),
+        ("Right now the thesis tells me what the essay is about, not what it will prove.",
+         "A reader should be able to finish the introduction and know the sequence of claims coming. "
+         "Name the two or three points the body will make, in the order they appear, and check that "
+         "each paragraph delivers one of them."),
     ],
     "thesis_rhetorical_missing": [
         ("The introduction describes the text and its purpose but never states the rhetorical thesis.",
@@ -246,6 +251,10 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
          "Spell out what the reader should conclude from it."),
         ("The evidence is strong, but the paragraph never says why it matters.",
          "Connect the finding back to the claim of the paragraph."),
+        ("The paragraph summarizes what the study found and then moves on.",
+         "That is the point where the analysis has to start: say what the finding means for your "
+         "claim, why it matters, and how it changes the reader's understanding. A sentence or two "
+         "is enough, but without it the source is only being reported."),
     ],
     "statistics_no_analysis": [
         ("The statistic is vivid, but the paragraph does not explain what it demonstrates.",
@@ -330,6 +339,10 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
          "Push the final reflection toward why the argument matters beyond the page."),
         ("The conclusion reiterates several important points from the essay, though most of them have "
          "already been made in the body.", "What is the larger implication for the reader?"),
+        ("The final paragraph gathers the main points again, but it does not tell me what to do "
+         "with them.",
+         "Try ending on the implication instead: what should the reader now believe, or what follows "
+         "from your argument beyond this assignment? That is the sentence the conclusion is missing."),
     ],
     "conclusion_thin": [
         ("The conclusion is brief and mostly restates the main points.",
@@ -394,6 +407,10 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
          "Lead with your point, and let the evidence follow it."),
         ("This paragraph begins in the middle of the evidence.",
          "Open with a sentence that names the idea the evidence supports."),
+        ("The paragraph begins with a source instead of a claim.",
+         "Put the claim first, in your own words, and then let the evidence support it. As written, "
+         "the reader meets the citation before knowing what it is meant to prove, which makes the "
+         "paragraph feel like a list rather than an argument."),
     ],
     "repeated_opener": [
         ("Several paragraphs open with the same \u201c{opener}\u201d construction.",
@@ -404,8 +421,13 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
     "paragraph_overlong": [
         ("Two ideas are competing for the same paragraph here.",
          "Split it where the subject changes, and give each half its own topic sentence."),
+        ("This paragraph is doing two jobs.", ""),
         ("This paragraph changes direction without giving the reader a break.",
          "Cut it at the shift and open the next paragraph with the new claim."),
+        ("This paragraph is carrying two jobs at once.",
+         "Find the sentence where the subject changes, split there, and give the new paragraph its "
+         "own topic sentence. Both halves will read faster, and the second idea will stop feeling "
+         "like an afterthought."),
     ],
     "mla_heading_same_line": [
         ("Each item in an MLA heading belongs on its own line.",
@@ -472,8 +494,13 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
 }
 
 
-EXTRAS: dict[str, list[str]] = {
-    "THESIS STATEMENT": [
+_QUESTIONS = [
+    "What would that look like here?",
+    "Which sentence would you start with?",
+    "How would you phrase that in one line?",
+]
+
+EXTRAS: dict[str, list[str]] = {    "THESIS STATEMENT": [
         "Point to the sentence that says what you will prove, then make sure the body answers it.",
         "Read the introduction on its own and ask what a reader now expects you to argue.",
     ],
@@ -655,7 +682,25 @@ class CommentComposer:
                     continue
                 opener = _slug(lead_f.split(".")[0])
                 skeleton = _slug(lead)
-                text = _clean(" ".join(x for x in (lead_f, advice_f) if x))
+                # Shape mix measured from the 307-comment corpus: 46% of notes are
+                # a single sentence, 49% are two or three. Emit the observation
+                # alone, the advice alone, or both, instead of always pairing them.
+                shape = digest % 20
+                if shape < 8:
+                    parts = (lead_f,)
+                else:
+                    parts = (lead_f, advice_f)
+                if len(parts) == 2 and advice_f:
+                    # 39% of the corpus comments hedge ("a bit", "maybe", "seems").
+                    if digest % 3 == 0:
+                        advice_f = "Maybe " + advice_f[0].lower() + advice_f[1:]
+                    elif digest % 7 == 0:
+                        advice_f = "Perhaps " + advice_f[0].lower() + advice_f[1:]
+                    # 11% of the corpus comments ask a question.
+                    if digest % 5 == 0:
+                        tail = _QUESTIONS[(digest >> 9) % len(_QUESTIONS)]
+                        advice_f = advice_f.rstrip(". ") + ". " + tail
+                text = _clean(" ".join(x for x in parts if x))
                 if opener in self._used_openers and len(candidates) > 1:
                     continue
                 if skeleton in self._used_skeletons and len(candidates) > 1:

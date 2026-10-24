@@ -1708,6 +1708,7 @@ async def execute_thinkingstorm_pipeline(
     manual_mode = bool(custom_comments_text.strip() or custom_endnote_text.strip())
     pipeline_warning = ""
     qa_name = ""
+    endnote_text = ""
     if manual_mode:
         # Reviewer-supplied comments/endnote keep the legacy exact-injection path.
         automator = ThinkingStormAutomator(reviewer_name=reviewer_name, initials=reviewer_initials)
@@ -1796,6 +1797,7 @@ async def execute_thinkingstorm_pipeline(
                 }
                 for c in ts_result.comments
             ]
+            endnote_text = "\n\n".join(ts_result.endnote)
             domains = {}
             endnote_paras = ts_result.endnote
             idx = 2
@@ -1885,6 +1887,7 @@ async def execute_thinkingstorm_pipeline(
         "word_count": word_count,
         "comments": comments,
         "endnote_domains": domains,
+        "endnote_text": endnote_text,
         "commented_docx_url": f"/download/commented/{job_id}",
         "annotated_docx_url": f"/download/docx/{job_id}",
         "report_url": f"/download/report/{job_id}",

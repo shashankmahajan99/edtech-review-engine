@@ -76,7 +76,12 @@ def opener_ratio(texts: list[str]) -> float:
 
 
 def banned_hits(text: str) -> list[str]:
-    low = text.lower()
+    """LLM vocabulary in reviewer prose, ignoring quoted student specimens."""
+    import re as _re
+
+    prose = _re.sub(r"\u201c[^\u201d]*\u201d", " ", text)
+    prose = _re.sub(r'"[^"]*"', " ", prose)
+    low = prose.lower()
     return [p for p in BANNED_PHRASES if p in low]
 
 
