@@ -182,14 +182,14 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
 
     # -- thesis ---------------------------------------------------------------
     "thesis_vague": [
-        ("Your thesis outlines your broad topic, but it could be tighter.",
-         "Make sure it previews the major analytical points your body paragraphs explore."),
-        ("The thesis names the subject but leaves the actual claim open, especially around {vague}.",
-         "State the specific points the essay will prove, in order."),
-        ("As written, the thesis could describe hundreds of essays on this topic.",
-         "Narrow it to the one argument your evidence actually supports."),
-        ("The thesis keeps its distance from an actual claim, especially around {vague}.",
-         "Replace that language with the assertions your body paragraphs make."),
+        ("Your thesis reads a bit general.",
+         "Make it more specific by showing how the main ideas connect to each other."),
+        ("The thesis names the subject but leaves the actual claim open.",
+         "State the point you want the reader to take away, then let the body prove it."),
+        ("The thesis keeps its distance from an actual claim.",
+         "Replace the general language with the assertion your body paragraphs actually make."),
+        ("What point do you want to make about how these ideas fit together?",
+         "Answer that in the thesis, in one sentence."),
     ],
     "thesis_no_preview": [
         ("Your thesis outlines your broad topic, but could be tighter.",
@@ -402,10 +402,10 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
          "Rework this one so the transition grows out of the previous idea."),
     ],
     "paragraph_overlong": [
-        ("This paragraph runs to {words} words and carries more than one idea.",
-         "Split it where the focus shifts so each paragraph has a single job."),
-        ("At {words} words, this paragraph asks the reader to hold too much at once.",
-         "Break it at the point where the subject changes."),
+        ("Two ideas are competing for the same paragraph here.",
+         "Split it where the subject changes, and give each half its own topic sentence."),
+        ("This paragraph changes direction without giving the reader a break.",
+         "Cut it at the shift and open the next paragraph with the new claim."),
     ],
     "mla_heading_same_line": [
         ("Each item in an MLA heading belongs on its own line.",
@@ -474,59 +474,59 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
 
 EXTRAS: dict[str, list[str]] = {
     "THESIS STATEMENT": [
-        "A reader should be able to point to that sentence and say what you will prove.",
-        "Try reading the introduction alone and asking what you now expect to see argued.",
+        "Point to the sentence that says what you will prove, then make sure the body answers it.",
+        "Read the introduction on its own and ask what a reader now expects you to argue.",
     ],
     "INTRODUCTION": [
         "The first sentence has to earn the second one.",
-        "A specific opening image will do more work than a general claim.",
+        "A concrete opening detail will do more work than a general claim.",
     ],
     "ANALYSIS OF EVIDENCE": [
-        "The analysis is where the argument actually happens.",
-        "Reporting a finding is not the same as interpreting it.",
+        "Add the sentence that tells me what the evidence proves.",
+        "Right now the source speaks and you do not. Put your reading of it on the page.",
     ],
     "STATISTICS": [
-        "Numbers persuade only once you tell the reader what they mean.",
-        "A figure without a sentence of interpretation is still just data.",
+        "Tell me what the number means, not just what it is.",
+        "Follow the figure with the conclusion you want me to draw from it.",
     ],
     "CONCLUSION": [
-        "A conclusion earns its place by looking forward, not back.",
-        "The last paragraph is your chance to say why the essay matters.",
+        "End on the implication, not the recap.",
+        "Say why the argument matters beyond this assignment.",
     ],
     "TRANSITION": [
-        "One sentence is usually enough to close the gap.",
-        "Bridges between sections are cheap to add and easy to hear when missing.",
+        "One sentence linking the two ideas is enough.",
+        "Name the connection explicitly instead of letting the reader infer it.",
     ],
     "TOPIC SENTENCE": [
-        "A reader should know the paragraph's job from its first sentence.",
-        "The topic sentence is the promise the rest of the paragraph keeps.",
+        "Tell me the paragraph's job in its first sentence.",
+        "Put the claim first, then the evidence that supports it.",
     ],
     "ORGANISATION": [
-        "Order is an argument in its own right.",
-        "Readers follow the sequence, so make the sequence carry meaning.",
+        "Put the two ideas in the order you want me to think about them.",
+        "Say why this point comes before the next one.",
     ],
     "PUNCTUATION": [
-        "Small mechanical slips pull attention away from the argument.",
         "These are quick fixes once the ideas are settled.",
+        "Fix it here and check the rest of the paragraph for the same slip.",
     ],
     "SUBJECT-VERB AGREEMENT": [
-        "Agreement errors are easy to miss when you read for meaning; read this one aloud.",
-        "Find the subject first, then let the verb follow it.",
+        "Find the subject first, then make the verb agree with it.",
+        "Read the sentence aloud; the mismatch is easier to hear than to see.",
     ],
     "INFORMAL WRITING": [
-        "Academic prose names the specific effect rather than the general impression.",
+        "Name the specific effect rather than the general impression.",
         "The more precise word is usually the shorter one.",
     ],
     "SENTENCE CLARITY": [
         "The simpler version is also the more confident one.",
-        "A reader should not have to backtrack to follow a sentence.",
+        "Say it once, in order, without making me backtrack.",
     ],
     "FRAGMENTS": [
-        "Reading the sentence in isolation makes the missing piece easier to spot.",
-        "Every sentence needs one independent clause carrying the main idea.",
+        "Read the sentence alone; the missing piece is easier to spot.",
+        "Give it a subject and a verb, or attach it to the sentence it depends on.",
     ],
     "ABSTRACT": [
-        "A reader should be able to stop after the abstract and know what you found.",
+        "After the abstract, I should know what you found, not just what you studied.",
         "The abstract is a miniature of the paper, not a preview of the introduction.",
     ],
 }
@@ -681,20 +681,12 @@ class CommentComposer:
         return text
 
     def _maybe_extend(self, text: str, category: str, digest: int) -> str:
-        """Occasionally close with a short, category-specific remark.
+        """Disabled: appended advice duplicated the sentence it followed.
 
-        Length variety is the point: a review where every note is two sentences
-        of sixteen words reads as generated, however good each note is.
+        Human comments in the exemplars are one or two sentences. Length variety
+        comes from the template variants instead of a bolted-on aphorism.
         """
-        extras = EXTRAS.get(category)
-        if not extras:
-            return text
-        if len(text.split()) > 34:
-            return text
-        if (digest >> 5) % 3 != 0:
-            return text
-        extra = extras[(digest >> 9) % len(extras)]
-        return _clean(text + " " + extra)
+        return text
 
     @staticmethod
     def scan_style(text: str) -> list[str]:

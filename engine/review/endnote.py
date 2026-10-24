@@ -51,15 +51,15 @@ DOMAIN_SETS = {
 }
 
 OPENERS = [
-    "Thank you for submitting your paper. There are some suggestions that may help improve the quality of the paper:",
-    "Thank you for submitting your draft. I have left margin comments throughout, and these are the three areas worth your attention first:",
-    "Thank you for sharing this draft. The comments in the margin point to specific lines; below are the three areas to work on:",
+    "Thank you for submitting your paper. You need to focus on:",
+    "Thank you for submitting your draft. Here is what I would work on first:",
+    "Thank you for sharing this draft. These are the areas I would focus on:",
 ]
 
 CLOSERS = [
-    "I hope you find the feedback helpful.",
-    "I hope this feedback is useful as you revise.",
-    "I hope you find these suggestions helpful.",
+    "I hope this feedback is helpful.",
+    "I hope these suggestions help as you revise.",
+    "I hope you find this useful when you revise.",
 ]
 
 SIGNOFF = "All the best."

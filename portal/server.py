@@ -1671,8 +1671,29 @@ async def execute_thinkingstorm_pipeline(
 
     # 2. Create raw base docx
     base_docx_p = OUTPUT_DIR / f"{job_id}_raw.docx"
+    stripped_comments = 0
     if bytes_data and file and file.filename and file.filename.lower().endswith(".docx"):
         base_docx_p.write_bytes(bytes_data)
+        # A re-uploaded deliverable already carries our previous comments. Appending
+        # a second set is confusing and doubles the text, so start from a clean copy.
+        try:
+            import zipfile as _zipfile
+
+            from lxml import etree as _etree
+
+            with _zipfile.ZipFile(base_docx_p) as _z:
+                if "word/comments.xml" in _z.namelist():
+                    _root = _etree.fromstring(_z.read("word/comments.xml"))
+                    stripped_comments = len(_root.findall(
+                        "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}comment"))
+            if stripped_comments:
+                from tools.strip_comments import strip as _strip_comments
+
+                _clean = OUTPUT_DIR / f"{job_id}_clean.docx"
+                _strip_comments(base_docx_p, _clean)
+                _clean.replace(base_docx_p)
+        except Exception:
+            stripped_comments = 0
     else:
         raw_doc = docx.Document()
         for p in content.split("\n\n"):
@@ -1847,6 +1868,10 @@ async def execute_thinkingstorm_pipeline(
             job_id, student_name, "personal.reviewer@apexreview.org", content, content,
             annotated_filename, html_filename, f"Academic Writing ({academic_style.upper()})", word_count, now
         ))
+
+    if stripped_comments:
+        note = f"Removed {stripped_comments} existing comment(s) before reviewing, so you get one clean set."
+        pipeline_warning = f"{pipeline_warning} {note}".strip()
 
     reviewed_paragraphs = sorted({
         c.get("paragraph") for c in comments if isinstance(c, dict) and c.get("paragraph") is not None

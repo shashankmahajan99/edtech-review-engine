@@ -554,7 +554,8 @@ def thesis_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
         if mapped:
             out.append(Finding(
                 "thesis_vague", THESIS, *mapped,
-                {"vague": vague[:3], "words": len(best_sent.words)}, 82,
+                {"vague": vague[:3], "words": len(best_sent.words),
+                 "thesis": best_sent.text.strip()}, 82,
             ))
     elif not previews and best_score <= 8:
         mapped = best_block.span_in_paragraph(best_sent.start, best_sent.end)
