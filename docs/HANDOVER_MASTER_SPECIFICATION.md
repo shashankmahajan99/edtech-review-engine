@@ -668,6 +668,83 @@ flowchart LR
 
 ---
 
+## 14. Deterministic Review Pipeline (v2) — Zero-Token Production Engine
+
+The reviewer deliverable is now produced by `engine/review/`, an offline pipeline
+that requires **no LLM, no network, and no API spend** for any future document.
+
+### 14.1 What it produces
+
+`<original filename>_commented.docx` with:
+
+- native Word comments anchored to the exact quoted sentence (run-level splitting,
+  so the highlight never covers the whole paragraph);
+- an ALL-CAPS knowledge-base hyperlink opening every labelled comment;
+- a native endnote letter in `word/endnotes.xml` — Times New Roman 12 pt, red
+  (`FF0000`), 480-twip double spacing, greeting, three domains, signature.
+
+A JSON sidecar (`*.review.json`) records every finding, the selected comments, the
+endnote, and the gate metrics for QA audit.
+
+### 14.2 Guarantees enforced by the release gate
+
+| Check | Failure mode prevented |
+| :--- | :--- |
+| Paragraph text byte-identical to input | Any accidental edit to the student's manuscript |
+| One range start/end per comment, same paragraph, matching reference run | Comments that Word drops or misplaces |
+| Anchor text equals the selected quote | Highlights drifting to the wrong sentence |
+| 5–22 comments (3+ for very short statements) | Empty or bloated reviews |
+| No banned LLM vocabulary; burstiness, 5-gram and opener diversity bands | Machine-sounding margin notes |
+| Link allow-list (`knowledge.thinkingstorm.com`) | Dead or invented hyperlinks |
+| Endnote typography + three domain headings + signature | Format drift from the ThinkingStorm standard |
+
+A failed gate deletes the deliverable and returns the reason. Nothing half-correct
+is ever shipped.
+
+### 14.3 Voice model
+
+Forty-five detectors feed a phrase library mined from the three reference
+deliverables (Janeen, Andrea, Kiran), stored in `style_corpus/exemplars.json`.
+Variant selection is `sha1(fingerprint | rule | position)`: reproducible per
+document, effectively unique across documents. Comments deliberately alternate
+short commands with longer two-clause explanations; uniform length is the clearest
+machine-written tell.
+
+### 14.4 Genres
+
+Argumentative, APA research, rhetorical analysis, admissions personal statement,
+and generic academic prose are classified before rules run. Statements receive
+cliché-opening, generic-praise, specific-fit, and announced-conclusion checks
+instead of thesis rules, and a `Narrative and Opening / Specificity and Fit /
+Voice and Mechanics` endnote.
+
+### 14.5 Operations
+
+```bash
+python -m engine.review.cli review draft.docx     # single file
+python -m engine.review.cli batch ./inbox          # folder
+python -m engine.review.cli watch                  # zero-token inbox daemon
+python -m engine.review.cli selftest               # regression fixtures
+python -m unittest discover -s tests -v            # 26 tests
+```
+
+The Reviewer Studio (`/api/thinkingstorm/execute`) runs this pipeline in automatic
+mode and returns HTTP 422 with the gate's reason rather than a degraded document.
+Reviewer-typed custom comments/endnotes still take the legacy exact-injection path.
+
+### 14.6 Current regression state
+
+| Fixture | Human review | v2 output | Gate |
+| :--- | :---: | :---: | :--- |
+| Janeen (MLA argument) | 14 comments | 11 comments | PASS |
+| Andrea (MLA rhetorical) | 9 comments | 8 comments | PASS |
+| Kiran (APA research) | 17 comments | 12 comments | PASS |
+| SOP personal statement | — | 4 comments | PASS |
+
+Full design notes: [`docs/THINKINGSTORM_PIPELINE.md`](THINKINGSTORM_PIPELINE.md).
+
+---
+
 > **Certified Document Hash:** `e7b92f4c91a03d8`  
 > **Master Branch Commit:** `322b3f2`  
 > **Documentation Sign-off:** Senior AI Systems Architect & Founder Operations Group

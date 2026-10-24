@@ -98,7 +98,12 @@ def review_document(
     if dropped > max(2, len(selected) // 4):
         raise PipelineError(f"{dropped} of {len(selected)} comments could not be anchored")
     selected = anchorable
-    minimum = 4 if model.word_count < 600 else 5
+    if model.word_count < 300:
+        minimum = 3
+    elif model.word_count < 600:
+        minimum = 4
+    else:
+        minimum = 5
     if len(selected) < minimum:
         raise PipelineError(
             f"only {len(selected)} comments survived selection; refusing to ship"

@@ -244,6 +244,41 @@ class TestPipeline(unittest.TestCase):
             review_document(str(original), output_dir=str(OUT))
 
 
+@unittest.skipUnless(FIXTURES.exists(), "fixtures not built")
+class TestStatementGenre(unittest.TestCase):
+    def test_personal_statement_path(self):
+        import docx
+
+        OUT.mkdir(parents=True, exist_ok=True)
+        source = ROOT / "samples" / "sample_sop.txt"
+        if not source.exists():
+            self.skipTest("sample statement missing")
+        doc = docx.Document()
+        for para in [p.strip() for p in source.read_text(encoding="utf-8").split("\n\n") if p.strip()]:
+            doc.add_paragraph(para)
+        draft = OUT / "statement_raw.docx"
+        doc.save(str(draft))
+
+        result = review_document(str(draft), output_dir=str(OUT), overwrite=True)
+        self.assertEqual(result.analysis.essay_type, "statement")
+        self.assertTrue(result.validation.ok, result.validation.errors)
+        self.assertGreaterEqual(len(result.comments), 3)
+        rules = {c["rule"] for c in result.comments}
+        self.assertIn("statement_cliche_opener", rules)
+
+
+class TestExistingComments(unittest.TestCase):
+    def test_append_to_reviewed_file(self):
+        reviewed = Path(r"C:/Users/shashank/Downloads/janeen_REV_BY_TS_RaunakB_243347_1.docx")
+        if not reviewed.exists():
+            self.skipTest("reviewed exemplar not available")
+        OUT.mkdir(parents=True, exist_ok=True)
+        result = review_document(str(reviewed), output_dir=str(OUT),
+                                 allow_existing_comments=True, overwrite=True)
+        self.assertTrue(result.validation.ok, result.validation.errors)
+        self.assertGreater(result.validation.metrics["pre_existing_comments"], 0)
+
+
 class TestNoModelDependency(unittest.TestCase):
     def test_pipeline_modules_do_not_import_network_or_llm_clients(self):
         package = ROOT / "engine" / "review"

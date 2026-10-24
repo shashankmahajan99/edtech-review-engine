@@ -92,8 +92,10 @@ def check_text_block(texts: list[str], label: str = "comments") -> StyleReport:
         hits.extend(banned_hits(text))
     if hits:
         errors.append(f"{label}: banned AI phrasing {sorted(set(hits))}")
-    if len(texts) >= 3 and std < MIN_BURSTINESS_STD:
-        errors.append(f"{label}: sentence lengths too uniform (std {std:.1f} < {MIN_BURSTINESS_STD})")
+    # Sentence-length variance is noisy on very short reviews; scale the bar.
+    threshold = MIN_BURSTINESS_STD if len(texts) >= 6 else (1.6 if len(texts) >= 4 else 0.0)
+    if len(texts) >= 3 and std < threshold:
+        errors.append(f"{label}: sentence lengths too uniform (std {std:.1f} < {threshold})")
     if mean > MAX_MEAN_SENTENCE:
         errors.append(f"{label}: average sentence too long ({mean:.1f} words)")
     if len(texts) >= 3 and ngram > MAX_NGRAM_REPEAT:

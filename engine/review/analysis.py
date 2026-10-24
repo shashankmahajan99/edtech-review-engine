@@ -1091,12 +1091,101 @@ class AnalysisResult:
     blocks: list[Block]
 
 
+_STATEMENT_OPENERS = [
+    r"^i have always been (?:deeply )?passionate",
+    r"^ever since i was a (?:child|kid)",
+    r"^from (?:a|the) young age",
+    r"^since i was young",
+    r"^i have always (?:loved|wanted|dreamed|dreamt)",
+    r"^as a (?:child|kid),? i",
+]
+
+_STATEMENT_CLICHES = {
+    "world-class": "name the specific lab, centre, or course you want to work with",
+    "world class": "name the specific lab, centre, or course you want to work with",
+    "state-of-the-art": "replace this with the concrete facility or resource",
+    "diverse student body": "say what the specific community would give you",
+    "renowned faculty": "name the professor or research group you want to join",
+    "top-tier": "name the programme feature that matters to you",
+    "make a difference": "say what you would actually do, and for whom",
+    "change the world": "name the concrete problem you want to work on",
+    "leading software engineer": "name the kind of work you want to be doing",
+}
+
+
+def statement_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
+    """Personal statement / admissions diagnostics."""
+    out: list[Finding] = []
+    if not blocks:
+        return out
+
+    first_block = blocks[0]
+    sentences = first_block.sentences()
+    if sentences:
+        low = sentences[0].text.lower().strip()
+        for pat in _STATEMENT_OPENERS:
+            if re.search(pat, low):
+                mapped = first_block.span_in_paragraph(sentences[0].start, sentences[0].end)
+                if mapped:
+                    out.append(Finding("statement_cliche_opener", INTRO, *mapped, {}, 84))
+                break
+
+    for bi, block in enumerate(blocks):
+        low = block.text.lower()
+        for phrase, hint in _STATEMENT_CLICHES.items():
+            if phrase in low:
+                m = re.search(rf"\b{re.escape(phrase)}\b", low)
+                if m is None:
+                    continue
+                mapped = block.span_in_paragraph(m.start(), m.end())
+                if mapped:
+                    para, s, e = mapped
+                    s2, e2 = snippet_around(para.text, s, 70)
+                    out.append(Finding("statement_generic_claim", CLARITY, para, s2, e2,
+                                       {"phrase": phrase, "hint": hint}, 72))
+                break
+
+    for block in blocks:
+        low = block.text.lower()
+        m = re.search(r"\b(?:in conclusion|to sum up|in summary)\b[,: ]", low)
+        if m:
+            mapped = block.span_in_paragraph(m.start(), m.end())
+            if mapped:
+                out.append(Finding("conclusion_announced", CONCLUSION, *mapped, {}, 66))
+            break
+
+    # A statement that never names a concrete place, person, or project is the
+    # most common failure mode in admissions drafts.
+    full = " ".join(b.text for b in blocks)
+    if not re.search(r"\b(?:professor|prof\.|lab|laboratory|course|seminar|"
+                     r"clinic|programme|program at|research group|centre|center)\b", full.lower()):
+        target = next(
+            (b for b in blocks
+             if re.search(r"\b(?:program|programme|university|college|school|faculty)\b",
+                          b.text.lower())),
+            blocks[1] if len(blocks) > 1 else blocks[0],
+        )
+        sents = target.sentences()
+        if sents:
+            mapped = target.span_in_paragraph(sents[0].start, sents[0].end)
+            if mapped:
+                out.append(Finding("statement_no_specific_fit", ORGANISATION, *mapped, {}, 76))
+
+    return out
+
+
 def _essay_type(model: DocumentModel) -> str:
     text = " ".join(p.text for p in model.body_paragraphs).lower()
     if sum(text.count(k) for k in ("ethos", "pathos", "logos")) >= 2:
         return "rhetorical"
     if model.style == "apa" or len(_sources(text)) >= 3:
         return "research"
+    first_person = len(re.findall(r"\b(?:i|my|me|i'm|i've)\b", text))
+    admissions = len(re.findall(
+        r"\b(?:admission|program|programme|university|graduate|master'?s|ph\.?d|"
+        r"school of|applicant|candidate)\b", text))
+    if first_person >= 5 and admissions >= 2 and len(_sources(text)) < 2:
+        return "statement"
     if re.search(r"\b(should|must|ought|need to)\b", text) and re.search(r"\b(however|although)\b", text):
         return "argumentative"
     return "academic"
@@ -1110,10 +1199,13 @@ def analyze(model: DocumentModel) -> AnalysisResult:
     findings: list[Finding] = []
     findings += front_matter_rules(model)
     findings += abstract_rules(model)
-    findings += thesis_rules(model, blocks)
+    if essay_type == "statement":
+        findings += statement_rules(model, blocks)
+    else:
+        findings += thesis_rules(model, blocks)
+        findings += counterargument_rules(model, blocks)
     findings += body_rules(model, blocks)
     findings += conclusion_rules(model, blocks)
-    findings += counterargument_rules(model, blocks)
     findings += mechanics_rules(model)
     findings += reference_rules(model)
 

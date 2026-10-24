@@ -151,8 +151,9 @@ def validate_deliverable(
     anchors = _anchors(doc_root)
     expected_map = dict(expected)
     ours = set(expected_map)
-    if not (5 <= len(ours) <= 22):
-        errors.append(f"comment count {len(ours)} outside 5-22")
+    minimum = 3 if model.word_count < 300 else (4 if model.word_count < 600 else 5)
+    if not (minimum <= len(ours) <= 22):
+        errors.append(f"comment count {len(ours)} outside {minimum}-22")
     metrics["comments"] = len(ours)
     metrics["pre_existing_comments"] = len(ids) - len(ours)
 
@@ -211,17 +212,21 @@ def validate_deliverable(
                 elif nxt.find(f"{W}commentReference").get(f"{W}id") != cid:
                     errors.append(f"comment {cid}: reference id mismatch")
 
-    # overlapping ranges in one paragraph
+    # overlapping ranges among *our* comments (pre-existing reviewer notes may
+    # legitimately overlap when a second pass is appended)
     for p in doc_root.iter(f"{W}p"):
-        active = 0
+        active: list[str] = []
         for el in p.iter():
             if el.tag == f"{W}commentRangeStart":
-                active += 1
-                if active > 1:
+                cid = el.get(f"{W}id")
+                if cid in ours and any(a in ours for a in active):
                     errors.append("overlapping comment ranges in one paragraph")
                     break
+                active.append(cid)
             elif el.tag == f"{W}commentRangeEnd":
-                active = max(0, active - 1)
+                cid = el.get(f"{W}id")
+                if cid in active:
+                    active.remove(cid)
 
     # -- hyperlinks ---------------------------------------------------------
     rel_targets = {

@@ -138,8 +138,25 @@ On Windows:
 
 ---
 
-## 6. The reviewer voice
+## 6. Genres
 
+The engine classifies the draft before applying rules:
+
+| Genre | Detected by | Rules that apply |
+| --- | --- | --- |
+| `argumentative` | modal claim + counterargument language | thesis, evidence, transitions, conclusion, counterargument |
+| `research` (APA) | APA citations / references | abstract, thesis focus, evidence analysis, synthesis, APA mechanics |
+| `rhetorical` | ethos / pathos / logos | rhetorical thesis, appeals analysis, clarity |
+| `statement` | first-person density + admissions vocabulary | cliché opening, generic programme praise, missing specific fit, announced conclusion |
+| `academic` | fallback | thesis, evidence, structure |
+
+Personal statements skip thesis rules (a statement argues for a person, not a
+proposition) and use the `Narrative and Opening / Specificity and Fit / Voice and
+Mechanics` endnote domains.
+
+---
+
+## 7. The reviewer voice
 Comments are mined from the three reference deliverables in
 `style_corpus/exemplars.json` (Janeen, Andrea, Kiran). The rules:
 
@@ -156,7 +173,7 @@ draft is reproducible.
 
 ---
 
-## 7. Tests
+## 8. Tests
 
 ```bash
 python -m unittest discover -s tests -v
@@ -170,7 +187,23 @@ no module imports a network or LLM client.
 
 ---
 
-## 8. Adding a rule
+## 9. Portal integration
+
+`/api/thinkingstorm/execute` (the Reviewer Studio) runs this pipeline in
+automatic mode:
+
+- upload / text → `<job_id>_<original stem>_commented.docx` on disk, served by
+  `/download/commented/{job_id}` under the original filename;
+- the JSON response carries the comments (`category`, `target_text`,
+  `comment_text`, `link_url`) and the three endnote domains for the view;
+- a manuscript the gate rejects returns **HTTP 422** with the concrete reason
+  instead of a silently degraded document;
+- if the reviewer typed custom comments or an endnote, the legacy exact-injection
+  path is used instead, because those are explicit human instructions.
+
+---
+
+## 10. Adding a rule
 
 1. Add the detector to `engine/review/analysis.py`, returning a `Finding` with a
    precise span, category, priority, and facts.

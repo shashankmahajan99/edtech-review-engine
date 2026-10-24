@@ -261,6 +261,32 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
         ("This reads as a list of studies rather than a synthesis.",
          "Group the findings by what they agree on, then note any tension."),
     ],
+    "statement_cliche_opener": [
+        ("This is one of the most common openings in personal statements, and a committee reads hundreds "
+         "of them each cycle.",
+         "Open instead with the specific moment, problem, or decision that made this field matter to you."),
+        ("A sentence like this could begin almost any statement in this applicant pool.",
+         "Trade the general claim for a concrete scene the reader can see."),
+    ],
+    "statement_generic_claim": [
+        ("\u201c{phrase}\u201d could describe almost any programme, so it does little work here.",
+         "{hint}."),
+        ("The phrase \u201c{phrase}\u201d is a placeholder rather than a reason.",
+         "{hint}."),
+    ],
+    "statement_no_specific_fit": [
+        ("Nothing in the draft names a specific course, lab, or professor, which is the part committees "
+         "look for in the fit paragraph.",
+         "Name two concrete resources and connect each one to something you have already done."),
+        ("The statement argues that you are a strong candidate but not why this programme in particular.",
+         "Add the specific names and resources that make the match real."),
+    ],
+    "conclusion_announced": [
+        ("\u201cIn conclusion\u201d announces the ending rather than earning it.",
+         "Cut the phrase and let the final paragraph close on the idea itself."),
+        ("Signposting the conclusion is unnecessary in an essay this short.",
+         "Remove the marker and end on the substance."),
+    ],
     "conclusion_summary": [
         ("The conclusion restates points that already appear in the body.",
          "What is the larger implication for readers, and how can you end on that instead?"),
@@ -463,14 +489,6 @@ EXTRAS: dict[str, list[str]] = {
         "Reading the sentence in isolation makes the missing piece easier to spot.",
         "Every sentence needs one independent clause carrying the main idea.",
     ],
-    "MLA": [
-        "Formatting is the easiest part of the grade to secure.",
-        "These conventions are mechanical; a checklist pass will settle them.",
-    ],
-    "APA": [
-        "Formatting is the easiest part of the grade to secure.",
-        "These conventions are mechanical; a checklist pass will settle them.",
-    ],
     "ABSTRACT": [
         "A reader should be able to stop after the abstract and know what you found.",
         "The abstract is a miniature of the paper, not a preview of the introduction.",
@@ -499,6 +517,7 @@ class CommentComposer:
         self._used_openers: set[str] = set()
         self._used_phrasings: set[str] = set()
         self._used_skeletons: set[str] = set()
+        self._lengths: list[int] = []
 
     def _facts(self, finding) -> dict[str, Any]:
         facts = dict(finding.facts)
@@ -529,6 +548,11 @@ class CommentComposer:
         facts.setdefault("vague", "")
         facts.setdefault("date", "")
         facts.setdefault("suggested", "")
+        if facts.get("hint"):
+            hint = str(facts["hint"]).strip()
+            facts["hint"] = hint[0].upper() + hint[1:] if hint else hint
+        else:
+            facts.setdefault("hint", "")
         return facts
 
     def _variant_key(self, finding) -> str:
@@ -570,32 +594,41 @@ class CommentComposer:
         start = digest % len(order)
         order = order[start:] + order[:start]
 
-        for idx in order:
-            lead, advice = candidates[idx]
-            try:
-                lead_f = lead.format(**facts) if "{" in lead else lead
-                advice_f = advice.format(**facts) if "{" in advice else advice
-            except (KeyError, IndexError):
-                continue
-            opener = _slug(lead_f.split(".")[0])
-            skeleton = _slug(lead)
-            text = _clean(" ".join(x for x in (lead_f, advice_f) if x))
-            if opener in self._used_openers and len(candidates) > 1:
-                continue
-            if skeleton in self._used_skeletons and len(candidates) > 1:
-                continue
-            key = _slug(text)
-            if key in self._used_phrasings:
-                continue
-            self._used_openers.add(opener)
-            self._used_skeletons.add(skeleton)
-            self._used_phrasings.add(key)
-            text = self._maybe_extend(text, finding.category, digest)
-            self._used_phrasings.add(_slug(text))
-            return text
+        last_len = self._lengths[-1] if self._lengths else None
+        for strict in (True, False):
+            for idx in order:
+                lead, advice = candidates[idx]
+                try:
+                    lead_f = lead.format(**facts) if "{" in lead else lead
+                    advice_f = advice.format(**facts) if "{" in advice else advice
+                except (KeyError, IndexError):
+                    continue
+                opener = _slug(lead_f.split(".")[0])
+                skeleton = _slug(lead)
+                text = _clean(" ".join(x for x in (lead_f, advice_f) if x))
+                if opener in self._used_openers and len(candidates) > 1:
+                    continue
+                if skeleton in self._used_skeletons and len(candidates) > 1:
+                    continue
+                key = _slug(text)
+                if key in self._used_phrasings:
+                    continue
+                # Keep sentence lengths moving: don't place two notes of the same
+                # size next to each other when another shape is available.
+                if strict and last_len is not None and abs(len(text.split()) - last_len) < 6:
+                    continue
+                self._used_openers.add(opener)
+                self._used_skeletons.add(skeleton)
+                self._used_phrasings.add(key)
+                text = self._maybe_extend(text, finding.category, digest)
+                self._used_phrasings.add(_slug(text))
+                self._lengths.append(len(text.split()))
+                return text
 
         lead, advice = candidates[digest % len(candidates)]
-        return _clean(" ".join(x for x in (lead, advice) if x))
+        text = _clean(" ".join(x for x in (lead, advice) if x))
+        self._lengths.append(len(text.split()))
+        return text
 
     def _maybe_extend(self, text: str, category: str, digest: int) -> str:
         """Occasionally close with a short, category-specific remark.

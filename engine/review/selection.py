@@ -119,10 +119,10 @@ def select_comments(model: DocumentModel, result: AnalysisResult) -> list[Select
     def can_take(f: Finding) -> bool:
         if per_category.get(f.category, 0) >= CATEGORY_CAPS.get(f.category, 2):
             return False
-        # Mostly one comment per paragraph keeps the margin readable, but short
-        # heading/date lines can legitimately carry two separate notes.
-        short_para = len(f.paragraph.words) <= 20
-        limit = 2 if short_para else 1
+        # One comment per paragraph keeps the margin readable; long paragraphs
+        # can carry a second note when the two anchors do not overlap.
+        words = len(f.paragraph.words)
+        limit = 2 if words <= 20 or words >= 35 else 1
         if per_paragraph.get(f.paragraph.index, 0) >= limit:
             return False
         if any(_overlaps(f, other) for other in chosen):

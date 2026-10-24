@@ -38,6 +38,11 @@ DOMAIN_SETS = {
         "Analysis and Evidence",
         "Clarity and Proofreading",
     ],
+    "statement": [
+        "Narrative and Opening",
+        "Specificity and Fit",
+        "Voice and Mechanics",
+    ],
     "academic": [
         "Thesis and Main Argument",
         "Evidence and Analysis",
@@ -223,6 +228,57 @@ def _structure_body(result: AnalysisResult, finding: Finding | None,
     ]
 
 
+def _statement_bodies(result: AnalysisResult) -> tuple[list[str], list[str], list[str]]:
+    """Domain bodies for an admissions personal statement."""
+    opener_f = _top(result.findings, INTRO)
+    fit_f = _top(result.findings, ORGANISATION, CLARITY)
+
+    if opener_f is not None:
+        first = [
+            "The opening reaches for a familiar line about lifelong passion, which is the most common "
+            "opening in this genre. Replace it with the specific moment or problem that made this field "
+            "matter to you, and let the reader infer the passion from the scene.",
+            "This is a recognisable opening move for applications, and committees read hundreds of them. "
+            "Start instead inside a concrete episode: a decision you made, a failure you fixed, a question "
+            "you could not drop.",
+        ]
+    else:
+        first = [
+            "Your opening is clear and gets the reader into the material quickly. The next step is to make "
+            "the first paragraph do narrative work: one specific moment, described with enough detail that "
+            "the reader can see it.",
+            "The introduction sets up your background efficiently. Consider grounding it in a single scene "
+            "rather than a summary of your interests; specificity is what a committee remembers.",
+        ]
+
+    if fit_f is not None:
+        second = [
+            "The paragraph on why this programme suits you leans on phrases that could describe almost any "
+            "department. Name the lab, the course, or the professor whose work connects to what you have "
+            "already done, and say what you would want to contribute.",
+            "You state that this is the right place for you, but the reasons stay general. Pick two concrete "
+            "features of the programme and tie each one to a project or skill of yours.",
+        ]
+    else:
+        second = [
+            "You connect your background to the programme's work, which is exactly what this section needs. "
+            "Keep the link explicit as you revise: what you have done, what you want to learn next, and why "
+            "this programme is the place to learn it.",
+            "The fit between your experience and the programme comes through. Sharpen it with one or two "
+            "specific resources you want to use there, so the paragraph could only be about this school.",
+        ]
+
+    third = [
+        "The draft is readable, and a final proofreading pass will take care of the smaller mechanical "
+        "points flagged in the margin. Read it aloud once; the places where you stumble are the places to "
+        "revise.",
+        "Your voice comes through in the writing, which matters more in this genre than in an academic "
+        "essay. Keep the sentences varied and concrete, and clear the mechanical notes in the margin before "
+        "you submit.",
+    ]
+    return first, second, third
+
+
 def compose_endnote(model: DocumentModel, result: AnalysisResult,
                     reviewer_name: str = "Raunak Banga",
                     student_name: str | None = None) -> Endnote:
@@ -248,6 +304,13 @@ def compose_endnote(model: DocumentModel, result: AnalysisResult,
     body1 = pick(_thesis_body(model, thesis_f), 3)
     body2 = pick(_evidence_body(result, evidence_f), 11)
     body3 = pick(_structure_body(result, structure_f, essay_type), 29)
+
+    if essay_type == "statement":
+        st1, st2, st3 = _statement_bodies(result)
+        body1 = pick(st1, 3)
+        body2 = pick(st2, 11)
+        body3 = pick(st3, 29)
+        mechanics_f = None  # already covered by the voice/mechanics paragraph
 
     if mechanics_f is not None and essay_type != "rhetorical":
         tail = pick([
