@@ -840,7 +840,7 @@ _SVA_PATTERNS = [
     (re.compile(r"\b(?:the|this|that)\s+(?:programs|students|policies|studies|researchers|results|effects|approaches)\s+(?:helps|has|is|was|does)\b", re.I), "plural"),
     (re.compile(r"(?<!\bif )(?<!\bas )\b(?:he|she|it)\s+(?:have|were|are)\b", re.I), "sing"),
     (re.compile(r"\b(?:programs|policies|results|studies|approaches|systems|methods|benefits)\b[^.!?]{0,70}?\bit\b", re.I), "pronoun"),
-    (re.compile(r"\b\w+\s+and\s+\w+\s+(?:helps|has|is|was|does|shows|makes)\b", re.I), "compound"),
+    (re.compile(r"(?:(?<=^)|(?<=[.!?]))\s*(?:[A-Z][\w'\u2019-]*\s+)?[\w'\u2019-]+\s+and\s+[\w'\u2019-]+\s+(?:helps|has|is|was|does|shows|makes)\b"), "compound"),
 ]
 
 _SPACING_PATTERNS = [    (re.compile(r"\s+[,;:](?!\d)"), "space_before_punct"),
@@ -927,7 +927,7 @@ def mechanics_rules(model: DocumentModel) -> list[Finding]:
             m = pat.search(text)
             if m:
                 sent = next((s for s in split_sentences(text)
-                             if s.start <= m.start() < s.end), None)
+                             if s.start < m.end() and m.start() < s.end), None)
                 if sent is not None:
                     s, e = sentence_span(sent)
                 else:
@@ -1052,10 +1052,11 @@ def reference_rules(model: DocumentModel) -> list[Finding]:
         else:
             m = re.search(r"\b(PubMed|Google Scholar|JSTOR|ProQuest)\b", text)
             if m:
-                s, e = snippet_around(text, m.start(), 60)
+                s, e = trim_span(text, m.start(), m.end())
                 out.append(Finding("apa_database", APA, p, s, e, {"db": m.group(1)}, 64))
 
-        for year_match in re.finditer(r"[,(]\s?(1[0-8]\d{2}|19\d{2}|20\d{2})(?=[,).])", text):
+        year_pattern = (r"[,.(]\s?(\d{4})," if model.style == "mla" else r"\((\d{4})[,)]")
+        for year_match in re.finditer(year_pattern, text):
             year = int(year_match.group(1))
             if year < 1900 or (p.region == "references" and year > _CURRENT_YEAR + 1):
                 s, e = trim_span(text, year_match.start(1), year_match.end(1))

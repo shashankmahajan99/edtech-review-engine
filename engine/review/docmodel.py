@@ -311,6 +311,9 @@ def classify_regions(paragraphs: list[Paragraph]) -> None:
         if _is_blank(p):
             p.region = "blank"
             continue
+        if p.in_table:
+            p.region = "table"
+            continue
         if ref_head is not None and p.index >= ref_head:
             p.region = "references"
             continue

@@ -14,7 +14,7 @@ $stopFile = Join-Path $inbox "STOP"
 if (Test-Path $stopFile) { Remove-Item $stopFile -Force }
 
 $python = (Get-Command python).Source
-$args = @("-m", "engine.review.cli", "watch", "--inbox", $inbox, "--outbox", $outbox, "--interval", "10")
+$cliArgs = @("-u", "-m", "engine.review.cli", "watch", "--inbox", $inbox, "--outbox", $outbox, "--interval", "10")
 
 $existing = Get-CimInstance Win32_Process -Filter "Name = 'python.exe'" |
     Where-Object { $_.CommandLine -like "*engine.review.cli watch*" }
@@ -23,7 +23,7 @@ if ($existing) {
     exit 0
 }
 
-$proc = Start-Process -FilePath $python -ArgumentList $args -WorkingDirectory $root `
+$proc = Start-Process -FilePath $python -ArgumentList $cliArgs -WorkingDirectory $root `
     -RedirectStandardOutput $log -RedirectStandardError "$log.err" -PassThru -WindowStyle Hidden
 
 $proc.Id | Set-Content (Join-Path $outbox "watcher.pid")

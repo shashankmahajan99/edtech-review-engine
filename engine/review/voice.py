@@ -86,7 +86,7 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
         ("The date on an APA title page should be written in words, not numerals.",
          "Change {date} to {suggested}."),
         ("Use {suggested} rather than {date}.", ""),
-        ("APA title pages spell out the month, and the numbers here look copied straight from a calendar.",
+        ("Title pages spell out the month, and the numbers here look copied straight from a calendar.",
          "Rewrite the line as {suggested}."),
     ],
     "mla_heading_order": [
@@ -117,7 +117,7 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
         ("The period after the title is unnecessary; drop it so the title stands on its own.", ""),
     ],
     "apa_instructor_missing": [
-        ("APA student title pages carry four lines: title, author, affiliation, and instructor.",
+        ("Student title pages carry four lines: title, author, affiliation, and instructor.",
          "Add the instructor's name below the course so the block is complete."),
         ("The title page lists your name and course but not your instructor.",
          "Insert that line under the course."),
@@ -145,7 +145,7 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
         ("Italicize the journal name; the article title stays in quotes.", ""),
     ],
     "apa_database": [
-        ("APA 7 omits database names and indexing services when a standard DOI link is provided.",
+        ("Database names and indexing services are omitted when a standard DOI link is provided.",
          "Delete the database name."),
         ("Naming the database duplicates information the DOI already carries, so APA drops it.",
          "Remove it from the entry."),
@@ -497,8 +497,22 @@ EXTRAS: dict[str, list[str]] = {
 
 
 def _clean(text: str) -> str:
+    """Normalise spacing *outside* quoted material.
+
+    Quoted specimens are evidence: a double space or a space before a comma
+    inside them is the defect being described, so it must survive.
+    """
+    quoted = re.findall(r"\u201c[^\u201d]*\u201d", text)
+    placeholders: dict[str, str] = {}
+    for i, segment in enumerate(quoted):
+        key = f"\x00{i}\x00"
+        placeholders[key] = segment
+        text = text.replace(segment, key, 1)
     text = re.sub(r"\s+", " ", text).strip()
     text = re.sub(r"\s+([,.;:?!])", r"\1", text)
+    for key, segment in placeholders.items():
+        text = text.replace(key, segment)
+    text = text.strip()
     if text and text[0].islower():
         text = text[0].upper() + text[1:]
     return text

@@ -47,6 +47,21 @@ RHETORICAL = {THESIS, INTRO, ORGANISATION, TOPIC, TRANSITION, EVIDENCE, CONCLUSI
 # Findings that must carry a category label in the comment body.
 ALWAYS_LABELLED = RHETORICAL | {MLA, APA, PUNCT, FRAGMENTS, SVA, INFORMAL, CLARITY}
 
+# Rules that should not repeat within one review even across paragraphs.
+RULE_CAPS = {
+    "mla_container_italics": 1,
+    "mla_raw_url_container": 1,
+    "implausible_year": 1,
+    "apa_database": 1,
+    "org_name_mismatch": 1,
+    "works_cited_top_margin": 1,
+    "counterargument_missing": 1,
+    "thesis_missing": 1,
+    "thesis_vague": 1,
+    "thesis_no_preview": 1,
+    "conclusion_summary": 1,
+}
+
 
 @dataclass
 class SelectedComment:
@@ -115,9 +130,12 @@ def select_comments(model: DocumentModel, result: AnalysisResult) -> list[Select
     chosen: list[Finding] = []
     per_category: dict[str, int] = {}
     per_paragraph: dict[int, int] = {}
+    per_rule: dict[str, int] = {}
 
     def can_take(f: Finding) -> bool:
         if per_category.get(f.category, 0) >= CATEGORY_CAPS.get(f.category, 2):
+            return False
+        if per_rule.get(f.rule_id, 0) >= RULE_CAPS.get(f.rule_id, 2):
             return False
         # One comment per paragraph keeps the margin readable; long paragraphs
         # can carry a second note when the two anchors do not overlap.
@@ -136,6 +154,7 @@ def select_comments(model: DocumentModel, result: AnalysisResult) -> list[Select
             chosen.append(f)
             per_category[f.category] = per_category.get(f.category, 0) + 1
             per_paragraph[f.paragraph.index] = per_paragraph.get(f.paragraph.index, 0) + 1
+            per_rule[f.rule_id] = per_rule.get(f.rule_id, 0) + 1
 
     # Rhetorical coverage: if we have room and nothing rhetorical was chosen,
     # promote the strongest rhetorical finding even at the cost of mechanics.

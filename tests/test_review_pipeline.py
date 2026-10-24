@@ -279,6 +279,62 @@ class TestExistingComments(unittest.TestCase):
         self.assertGreater(result.validation.metrics["pre_existing_comments"], 0)
 
 
+class TestVoiceTemplates(unittest.TestCase):
+    LABELS = [
+        "THESIS STATEMENT", "INTRODUCTION", "ORGANISATION", "TOPIC SENTENCE",
+        "TRANSITION", "ANALYSIS OF EVIDENCE", "STATISTICS", "ANALYSIS",
+        "COUNTER-ARGUMENT", "CONCLUSION", "ABSTRACT", "MLA", "APA",
+        "PUNCTUATION", "FRAGMENTS", "SUBJECT-VERB AGREEMENT", "INFORMAL WRITING",
+        "SENTENCE CLARITY",
+    ]
+
+    def test_templates_do_not_start_with_a_category_label(self):
+        from engine.review.voice import TEMPLATES
+
+        for rule, variants in TEMPLATES.items():
+            for lead, _advice in variants:
+                for label in self.LABELS:
+                    self.assertFalse(
+                        lead.upper().startswith(label + " "),
+                        f"{rule} would duplicate its label: {lead[:60]!r}",
+                    )
+
+
+class TestTables(unittest.TestCase):
+    def test_table_paragraphs_are_not_treated_as_prose(self):
+        import docx
+
+        OUT.mkdir(parents=True, exist_ok=True)
+        doc = docx.Document()
+        doc.add_paragraph("Marcus Chen")
+        doc.add_paragraph("Professor Alvarez")
+        doc.add_paragraph("ENG 210")
+        doc.add_paragraph("12 October 2026")
+        doc.add_paragraph("The Case for Later Start Times")
+        for para in (
+            "Schools across the country begin classes before eight in the morning, and students pay for it. "
+            "Research on adolescent sleep shows that the teenage circadian rhythm shifts later during puberty.",
+            "The evidence on sleep and learning is consistent, and districts that moved the first bell have "
+            "seen attendance rise. The researchers found that students gained nearly an hour of sleep each "
+            "night, and the gains appeared across every demographic group in the sample. Attendance gains "
+            "held steady through the second year of the study.",
+            "Later start times are not a complete solution, but they are the cheapest and best-supported "
+            "change available. Schools should move the first bell to 8:30.",
+        ):
+            doc.add_paragraph(para)
+        table = doc.add_table(rows=1, cols=2)
+        table.cell(0, 0).text = "District"
+        table.cell(0, 1).text = "8:45"
+        path = OUT / "table_case.docx"
+        doc.save(str(path))
+
+        result = review_document(str(path), output_dir=str(OUT), overwrite=True)
+        self.assertTrue(result.validation.ok, result.validation.errors)
+        for comment in result.comments:
+            self.assertNotIn("8:45", comment["quote"])
+            self.assertNotIn("District", comment["quote"])
+
+
 class TestNoModelDependency(unittest.TestCase):
     def test_pipeline_modules_do_not_import_network_or_llm_clients(self):
         package = ROOT / "engine" / "review"
