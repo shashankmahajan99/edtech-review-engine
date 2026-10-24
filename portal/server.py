@@ -1404,10 +1404,12 @@ async def submit_manuscript(
     review_dict = review_payload.model_dump()
     log_compliance_event(job_id, "AI_CORE_PIPELINE", "3-Pass Diagnostic Reasoning Complete", json.dumps(review_dict))
 
-    # Step 3: Word OpenXML Track-Changes Generation (Pillar 1)
+    # Step 3: Dual-Mode Generation (ThinkingStorm Socratic + Admissions Redline)
     docx_filename = f"{job_id}_{file_stem}_annotated.docx"
+    commented_filename = f"{job_id}_{file_stem}_commented.docx"
     html_filename = f"{job_id}_{file_stem}_report.html"
     docx_path = OUTPUT_DIR / docx_filename
+    commented_path = OUTPUT_DIR / commented_filename
     html_path = OUTPUT_DIR / html_filename
 
     line_edits = review_dict.get('line_edits', [])
@@ -1421,6 +1423,26 @@ async def submit_manuscript(
         rubric_scores=review_dict.get("category_scores"),
         tutor_letter=review_dict.get("tutor_overview_letter")
     )
+
+    # ThinkingStorm Socratic Review (Native Comments & Endnotes)
+    base_docx_p = OUTPUT_DIR / f"{job_id}_raw.docx"
+    if file and file.filename and file.filename.endswith('.docx'):
+        base_docx_p.write_bytes(bytes_data)
+    else:
+        raw_doc = docx.Document()
+        for p in sanitized_text.split('\n\n'):
+            if p.strip():
+                raw_doc.add_paragraph(p.strip())
+        raw_doc.save(str(base_docx_p))
+
+    try:
+        ts_automator.generate_reviewed_docx(
+            input_docx=str(base_docx_p),
+            output_docx=str(commented_path),
+            student_name=student_name
+        )
+    except Exception as e:
+        print(f"[!] Warning in ThinkingStorm review generation: {e}")
 
     processor.generate_html_report(review_dict, str(html_path))
 
