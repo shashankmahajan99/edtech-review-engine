@@ -24,7 +24,6 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import pypdf
 from engine.processor import ReviewProcessor
-from engine.deep_pipeline import DeepReviewPipeline
 from engine.openxml_track_changes import WordTrackChangesEngine
 from engine.thinkingstorm_engine import (
     ThinkingStormAutomator,
@@ -80,7 +79,6 @@ DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 STATUS_FILE = OUTPUT_DIR / "service_status.json"
 
 processor = ReviewProcessor()
-deep_pipeline = DeepReviewPipeline()
 track_engine = WordTrackChangesEngine(author="Apex Admissions Editorial Desk")
 scrubber = PIIScrubber()
 gateway = StripeGateway()
@@ -1401,17 +1399,7 @@ async def submit_manuscript(
     sanitized_text, token_map = scrubber.deidentify(content, student_name=student_name)
     log_compliance_event(job_id, email, "PII_DEIDENTIFIED", f"Redacted student PII tokens: {list(token_map.keys())}", sanitized_text)
 
-    # Step 2: 3-Pass AI Reasoning & Evidence Extraction (Pillar 3)
-    review_payload = deep_pipeline.execute_3pass_review(
-        sanitized_text,
-        mode=mode,
-        target_institution=target_institution,
-        counselor_brief=counselor_brief
-    )
-    review_dict = review_payload.model_dump()
-    log_compliance_event(job_id, "AI_CORE_PIPELINE", "3-Pass Diagnostic Reasoning Complete", json.dumps(review_dict))
-
-    # Step 3: Dual-Mode Generation (ThinkingStorm Socratic + Admissions Redline)
+    # Step 2: deterministic analysis + rubric (no model call)
     docx_filename = f"{job_id}_{file_stem}_annotated.docx"
     commented_filename = f"{job_id}_{file_stem}_commented.docx"
     html_filename = f"{job_id}_{file_stem}_report.html"
@@ -1419,19 +1407,6 @@ async def submit_manuscript(
     commented_path = OUTPUT_DIR / commented_filename
     html_path = OUTPUT_DIR / html_filename
 
-    line_edits = review_dict.get('line_edits', [])
-    track_engine.create_trivium_certified_document(
-        text=sanitized_text,
-        output_path=str(docx_path),
-        line_edits=line_edits,
-        student_name=student_name,
-        institution=target_institution or "Accredited Academic Partner",
-        submission_id=f"TS-{job_id}",
-        rubric_scores=review_dict.get("category_scores"),
-        tutor_letter=review_dict.get("tutor_overview_letter")
-    )
-
-    # ThinkingStorm Socratic Review (Native Comments & Endnotes)
     base_docx_p = OUTPUT_DIR / f"{job_id}_raw.docx"
     if file and file.filename and file.filename.endswith('.docx'):
         base_docx_p.write_bytes(bytes_data)
@@ -1442,14 +1417,66 @@ async def submit_manuscript(
                 raw_doc.add_paragraph(p.strip())
         raw_doc.save(str(base_docx_p))
 
+    from engine.review.analysis import analyze as review_analyze
+    from engine.review.docmodel import load_document as review_load
+    from engine.review.report import build_review
+    from engine.review.writer import explode_runs as review_explode
+
+    review_model = review_load(str(base_docx_p))
+    for paragraph in review_model.paragraphs:
+        review_explode(paragraph.element)
+    review_result = review_analyze(review_model)
+    review_dict = build_review(
+        review_model,
+        review_result,
+        sanitized_text,
+        mode=mode,
+        institution=target_institution,
+        student_name=student_name,
+        reviewer_name="Raunak Banga",
+    )
+    log_compliance_event(job_id, "REVIEW_ENGINE", "Deterministic rubric complete", json.dumps(review_dict))
+
+    # Step 3: Dual-Mode Generation (ThinkingStorm Socratic + Admissions Redline)
+    track_engine.create_trivium_certified_document(
+        text=sanitized_text,
+        output_path=str(docx_path),
+        line_edits=review_dict.get('line_edits', []),
+        student_name=student_name,
+        institution=target_institution or "Accredited Academic Partner",
+        submission_id=f"TS-{job_id}",
+        rubric_scores=review_dict.get("category_scores"),
+        tutor_letter=review_dict.get("tutor_overview_letter")
+    )
+
+    # ThinkingStorm deliverable: same deterministic pipeline as the Reviewer Studio.
+    from engine.review.pipeline import PipelineError as ReviewRejected
+    from engine.review.pipeline import review_document as review_deliverable
+
     try:
-        ts_automator.generate_reviewed_docx(
-            input_docx=str(base_docx_p),
-            output_docx=str(commented_path),
-            student_name=student_name
+        ts_result = review_deliverable(
+            str(base_docx_p),
+            output_dir=str(OUTPUT_DIR),
+            reviewer_name="Raunak Banga",
+            student_name=student_name,
+            academic_style="auto",
+            allow_existing_comments=True,
+            overwrite=True,
         )
-    except Exception as e:
-        print(f"[!] Warning in ThinkingStorm review generation: {e}")
+        if Path(ts_result.output_path) != commented_path:
+            Path(ts_result.output_path).replace(commented_path)
+    except ReviewRejected as exc:
+        # Too short or no anchorable spans: fall back to the legacy commenter so
+        # the client still receives a document, and record why.
+        log_compliance_event(job_id, "REVIEW_ENGINE", "Pipeline declined; legacy fallback", str(exc))
+        try:
+            ts_automator.generate_reviewed_docx(
+                input_docx=str(base_docx_p),
+                output_docx=str(commented_path),
+                student_name=student_name,
+            )
+        except Exception as fallback_error:
+            print(f"[!] Warning in ThinkingStorm review generation: {fallback_error}")
 
     processor.generate_html_report(review_dict, str(html_path))
 
@@ -1687,11 +1714,28 @@ async def execute_thinkingstorm_pipeline(
             else:
                 idx += 1
 
-    # 4. Generate Admissions Redline deliverable
+    # 4. Deterministic rubric + redline (no model call; derived from the same findings)
     annotated_filename = f"{job_id}_annotated.docx"
     annotated_path = OUTPUT_DIR / annotated_filename
-    review_payload = deep_pipeline.execute_3pass_review(content, mode="academic", target_institution=academic_style)
-    review_dict = review_payload.model_dump()
+
+    from engine.review.analysis import analyze as ts_analyze
+    from engine.review.docmodel import load_document as ts_load_document
+    from engine.review.report import build_review as ts_build_review
+    from engine.review.writer import explode_runs as ts_explode_runs
+
+    review_model = ts_load_document(str(base_docx_p))
+    for paragraph in review_model.paragraphs:
+        ts_explode_runs(paragraph.element)
+    review_result = ts_analyze(review_model)
+    review_dict = ts_build_review(
+        review_model,
+        review_result,
+        content,
+        mode="academic",
+        institution=academic_style,
+        student_name=student_name,
+        reviewer_name=reviewer_name,
+    )
 
     track_engine.create_trivium_certified_document(
         text=content,

@@ -214,6 +214,8 @@ no module imports a network or LLM client.
 
 ## 9. Portal integration
 
+**Both website routes use this engine.** There is no second review path.
+
 `/api/thinkingstorm/execute` (the Reviewer Studio) runs this pipeline in
 automatic mode:
 
@@ -225,6 +227,29 @@ automatic mode:
   instead of a silently degraded document;
 - if the reviewer typed custom comments or an endnote, the legacy exact-injection
   path is used instead, because those are explicit human instructions.
+
+`/submit` (public intake) runs the same pipeline and produces all three
+artifacts from one analysis:
+
+- `_commented.docx` — the ThinkingStorm deliverable above (falls back to the
+  legacy commenter only if the gate declines, e.g. a draft under 80 words);
+- `_annotated.docx` — tracked changes plus the 4-pillar rubric and the tutor
+  letter;
+- `_report.html` — executive summary, priority actions, pillar breakdown and
+  line edits.
+
+The rubric, the tracked changes and the report are computed by
+`engine/review/report.py` from the same findings that drive the comments, so the
+three deliverables cannot contradict one another. Scores are penalty-based
+(25 per pillar, major rhetorical problems cost more than mechanical ones) and
+verdicts name the specific issue that was detected.
+
+### No model call by default
+
+`engine/processor.py` only calls a model when **both** an API key is present
+**and** `APEX_ENABLE_LLM=1` is set. Otherwise it computes the same deterministic
+rubric. Nothing in the website requires a key, a network connection, or a token
+budget.
 
 ---
 

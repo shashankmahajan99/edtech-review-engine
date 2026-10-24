@@ -80,6 +80,9 @@ Then visit **`http://127.0.0.1:8000`** in your browser.
 
 * **Client View:** Explore pricing tiers ($24.99 - $34.99 per essay, $1,250/mo retainer) and submit manuscripts via text or `.docx` upload.
 * **Reviewer View:** Automatic generation of annotated `.docx` and Executive Rubric report with direct download links.
+* **Reviewer Studio (`/thinkingstorm`):** upload a draft and receive the native-comment deliverable plus the endnote letter, produced by the deterministic engine in `engine/review`. The public `/submit` route now uses the same engine for its commented, annotated and HTML-report deliverables.
+
+Every review score, verdict and tracked change is derived from the detected issues. No model is called unless `APEX_ENABLE_LLM=1` is set deliberately.
 
 ---
 

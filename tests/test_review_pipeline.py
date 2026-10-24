@@ -335,6 +335,56 @@ class TestTables(unittest.TestCase):
             self.assertNotIn("District", comment["quote"])
 
 
+@unittest.skipUnless(FIXTURES.exists(), "fixtures not built")
+class TestDeterministicReport(unittest.TestCase):
+    def test_report_is_derived_from_findings(self):
+        from engine.review.report import build_review
+
+        model = load_document(str(fixture("kiran_raw.docx")))
+        result = analyze(model)
+        review = build_review(model, result, model.full_text, mode="academic")
+
+        self.assertTrue(48 <= review["overall_score"] <= 100)
+        self.assertEqual(len(review["category_scores"]), 4)
+        for pillar in review["category_scores"].values():
+            self.assertTrue(0 < pillar["score"] <= 25)
+            self.assertTrue(pillar["verdict"])
+            self.assertTrue(pillar["label"])
+        self.assertTrue(review["executive_summary"])
+        self.assertIn(str(model.word_count), review["executive_summary"])
+        self.assertTrue(1 <= len(review["top_action_items"]) <= 4)
+
+        for edit in review["line_edits"]:
+            self.assertIn(edit["original_text"], model.full_text)
+            self.assertNotEqual(edit["original_text"], edit["suggested_replacement"])
+
+    def test_admissions_pillars(self):
+        from engine.review.report import build_review
+
+        model = load_document(str(fixture("kiran_raw.docx")))
+        result = analyze(model)
+        review = build_review(model, result, model.full_text, mode="admissions")
+        self.assertEqual(
+            set(review["category_scores"]),
+            {"narrative_hook_and_voice", "intellectual_trajectory",
+             "program_alignment", "narrative_economy_and_polish"},
+        )
+
+    def test_processor_is_deterministic_by_default(self):
+        from engine.processor import ReviewProcessor
+
+        processor = ReviewProcessor(api_key="not-used")
+        self.assertFalse(processor.llm_opt_in)
+        report = processor.analyze_text(
+            "Students should not have to pay tuition. The evidence shows that enrolment rises "
+            "when tuition falls, and the reason for that is because cost is the main barrier. "
+            "In conclusion, free tuition is the best policy for the state.",
+            mode="academic",
+        )
+        self.assertIn("category_scores", report)
+        self.assertEqual(len(report["category_scores"]), 4)
+
+
 class TestNoModelDependency(unittest.TestCase):
     def test_pipeline_modules_do_not_import_network_or_llm_clients(self):
         package = ROOT / "engine" / "review"
@@ -344,6 +394,12 @@ class TestNoModelDependency(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             for token in forbidden:
                 self.assertNotIn(token, text, f"{path.name} imports {token}")
+
+    def test_portal_has_no_unconditional_model_call(self):
+        server = (ROOT / "portal" / "server.py").read_text(encoding="utf-8")
+        self.assertNotIn("deep_pipeline", server)
+        processor = (ROOT / "engine" / "processor.py").read_text(encoding="utf-8")
+        self.assertIn("APEX_ENABLE_LLM", processor)
 
 
 if __name__ == "__main__":

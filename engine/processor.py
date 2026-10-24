@@ -16,26 +16,28 @@ from .prompts import ACADEMIC_REVIEW_SYSTEM_PROMPT, ADMISSIONS_SOP_SYSTEM_PROMPT
 
 
 class ReviewProcessor:
+    """Report builder for the portal.
+
+    Deterministic by default: the report is computed from the review engine's
+    findings.  A model call is only made when APEX_ENABLE_LLM is explicitly set
+    to 1/true *and* an API key is present — the website never depends on one.
+    """
+
     def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4o"):
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
         self.model = model
+        self.llm_opt_in = os.environ.get("APEX_ENABLE_LLM", "").strip().lower() in {"1", "true", "yes"}
 
     def analyze_text(self, text: str, mode: str = "academic", prompt_requirements: str = "") -> Dict[str, Any]:
-        """
-        Runs LLM audit. If API key is not configured, provides a high-fidelity
-        structured analysis sample for instant demonstration and testing.
-        """
-        system_prompt = (
-            ADMISSIONS_SOP_SYSTEM_PROMPT if mode.lower() == "admissions"
-            else ACADEMIC_REVIEW_SYSTEM_PROMPT
-        )
-        
-        user_message = f"DOCUMENT FOR REVIEW:\n\n{text}"
-        if prompt_requirements:
-            user_message += f"\n\nSPECIFIC ASSIGNMENT / ESSAY PROMPT:\n{prompt_requirements}"
-
-        # If live OpenAI client is available and key is set:
-        if self.api_key:
+        """Deterministic rubric by default; optional opt-in model audit."""
+        if self.api_key and self.llm_opt_in:
+            system_prompt = (
+                ADMISSIONS_SOP_SYSTEM_PROMPT if mode.lower() == "admissions"
+                else ACADEMIC_REVIEW_SYSTEM_PROMPT
+            )
+            user_message = f"DOCUMENT FOR REVIEW:\n\n{text}"
+            if prompt_requirements:
+                user_message += f"\n\nSPECIFIC ASSIGNMENT / ESSAY PROMPT:\n{prompt_requirements}"
             try:
                 from openai import OpenAI
                 client = OpenAI(api_key=self.api_key)
@@ -50,14 +52,49 @@ class ReviewProcessor:
                 )
                 return json.loads(response.choices[0].message.content)
             except Exception as e:
-                print(f"[!] Warning: API call failed ({e}). Falling back to heuristic engine.")
+                print(f"[!] Warning: optional model call failed ({e}). Using the deterministic engine.")
 
-        # Fallback / Demo Engine (Guarantees zero-error out-of-the-box operation)
         word_count = len(text.split())
         return self._generate_heuristic_report(text, mode, word_count)
 
     def _generate_heuristic_report(self, text: str, mode: str, word_count: int) -> Dict[str, Any]:
-        """Generates an elite academic audit for instant pipeline testing."""
+        """Rubric and redline derived from the deterministic review engine."""
+        import tempfile
+        import os as _os
+
+        tmp_path = None
+        try:
+            import docx as _docx
+            from .review.analysis import analyze as _analyze
+            from .review.docmodel import load_document as _load
+            from .review.report import build_review as _build
+            from .review.writer import explode_runs as _explode
+
+            handle = tempfile.NamedTemporaryFile(suffix=".docx", delete=False)
+            tmp_path = handle.name
+            handle.close()
+            draft = _docx.Document()
+            for para in [p.strip() for p in text.split("\n\n") if p.strip()]:
+                draft.add_paragraph(para)
+            draft.save(tmp_path)
+
+            model = _load(tmp_path)
+            for paragraph in model.paragraphs:
+                _explode(paragraph.element)
+            result = _analyze(model)
+            return _build(model, result, text, mode=mode)
+        except Exception as exc:  # pragma: no cover - defensive fallback
+            print(f"[!] Warning: deterministic report failed ({exc}).")
+        finally:
+            if tmp_path and _os.path.exists(tmp_path):
+                try:
+                    _os.unlink(tmp_path)
+                except OSError:
+                    pass
+        return self._fallback_report(text, mode, word_count)
+
+    def _fallback_report(self, text: str, mode: str, word_count: int) -> Dict[str, Any]:
+        """Minimal report used only if the review engine itself fails."""
         first_sentence = text.split(".")[0] if "." in text else text[:100]
         
         if mode == "admissions":
@@ -286,7 +323,7 @@ class ReviewProcessor:
         cats = review_data.get("category_scores", {})
         cat_rows = "".join([
             f"""<tr>
-                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">{k.replace('_', ' ').title()}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">{v.get('label') or k.replace('_', ' ').title()}</td>
                 <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #2b6cb0; font-weight: 700;">{v.get('score')}/{v.get('max')}</td>
                 <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #4a5568;">{v.get('verdict')}</td>
             </tr>"""

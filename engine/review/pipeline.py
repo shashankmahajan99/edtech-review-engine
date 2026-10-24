@@ -77,7 +77,7 @@ def review_document(
             f"{src.name} already contains comments; pass allow_existing_comments=True "
             "to append a second review"
         )
-    if model.word_count < 120:
+    if model.word_count < 80:
         raise PipelineError(f"{src.name} is too short to review ({model.word_count} words)")
 
     result = analyze(model)
