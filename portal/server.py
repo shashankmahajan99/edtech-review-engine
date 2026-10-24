@@ -1411,12 +1411,16 @@ async def submit_manuscript(
     html_path = OUTPUT_DIR / html_filename
 
     line_edits = review_dict.get('line_edits', [])
-    if file and file.filename and file.filename.endswith('.docx'):
-        base_docx_path = OUTPUT_DIR / f'{job_id}_raw.docx'
-        base_docx_path.write_bytes(bytes_data)
-        track_engine.process_document(str(base_docx_path), str(docx_path), line_edits)
-    else:
-        track_engine.create_tracked_docx_from_text(sanitized_text, str(docx_path), line_edits)
+    track_engine.create_trivium_certified_document(
+        text=sanitized_text,
+        output_path=str(docx_path),
+        line_edits=line_edits,
+        student_name=student_name,
+        institution=target_institution or "Accredited Academic Partner",
+        submission_id=f"TS-{job_id}",
+        rubric_scores=review_dict.get("category_scores"),
+        tutor_letter=review_dict.get("tutor_overview_letter")
+    )
 
     processor.generate_html_report(review_dict, str(html_path))
 

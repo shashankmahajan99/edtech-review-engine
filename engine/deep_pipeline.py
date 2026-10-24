@@ -9,6 +9,7 @@ import json
 import re
 from typing import Dict, List, Any, Optional
 from pydantic import BaseModel, Field
+from engine.anti_ai_humanizer import humanize_editorial_comment, build_thinkingstorm_tutor_overview, measure_burstiness
 
 
 class CategoryScore(BaseModel):
@@ -30,6 +31,7 @@ class DeepReviewPayload(BaseModel):
     executive_summary: str
     top_action_items: List[str]
     line_edits: List[LineEdit]
+    tutor_overview_letter: str = ""
 
 
 class DeepReviewPipeline:
@@ -78,7 +80,7 @@ class DeepReviewPipeline:
                     original_text=exact_orig,
                     suggested_replacement=replacement,
                     issue_type=issue,
-                    explanation=explanation
+                    explanation=humanize_editorial_comment(explanation)
                 ))
 
         # Dynamic contextual admissions patterns
@@ -154,7 +156,7 @@ class DeepReviewPipeline:
                         original_text=matched_str,
                         suggested_replacement=repl,
                         issue_type=issue,
-                        explanation=exp
+                        explanation=humanize_editorial_comment(exp)
                     ))
 
         # Stylistic & grammatical fallbacks on sentences if few edits matched
@@ -244,12 +246,20 @@ class DeepReviewPipeline:
                 "Priority 3: Verify that all secondary citations conform strictly to designated style guide conventions."
             ]
 
+        tutor_letter = build_thinkingstorm_tutor_overview(
+            student_name="Applicant",
+            institution=target_institution or "Target University",
+            prompt="Admissions Essay",
+            word_count=word_count,
+            scores={k: v.score for k, v in cats.items()}
+        )
         return DeepReviewPayload(
             overall_score=total_score,
             category_scores=cats,
             executive_summary=summary,
             top_action_items=actions,
-            line_edits=edits
+            line_edits=edits,
+            tutor_overview_letter=tutor_letter
         )
 
 

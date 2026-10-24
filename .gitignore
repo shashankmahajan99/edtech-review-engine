@@ -11,3 +11,4 @@ browser_profile/
 *.db
 *.sqlite
 *.sqlite3
+*.bundle
