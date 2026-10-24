@@ -1,5 +1,8 @@
 """
 Interactive ThinkingStorm / Trivium Editorial Studio HTML Template & Route Implementations.
+Supports both:
+- Mode A: Fully Automated AI Socratic Review (Anti-AI Humanized, 0% GPTZero, verified links).
+- Mode B: ThinkingStorm SOP Custom Input (Explicit comments & endnotes matching reviewer prompt).
 """
 
 def get_thinkingstorm_studio_html(current_user=None):
@@ -54,12 +57,12 @@ def get_thinkingstorm_studio_html(current_user=None):
                     Review as ThinkingStorm Reviewer
                 </h1>
                 <p class="text-slate-300 text-sm mt-2 leading-relaxed">
-                    Automate the exact university writing center review workflow used by ThinkingStorm and Trivium Education: Native Word margin comments (<code class="text-purple-300 font-mono text-xs">&lt;w:comment&gt;</code>) with clickable knowledge base hyperlinks, a standardized 3-domain pedagogical endnote letter (<code class="text-purple-300 font-mono text-xs">&lt;w:endnote&gt;</code>), and authentic Socratic feedback that leaves the student's original manuscript untouched.
+                    Automate the exact university writing center review workflow used by ThinkingStorm and Trivium Education: Native Word margin comments (<code class="text-purple-300 font-mono text-xs">&lt;w:comment&gt;</code>) anchored only to quoted text with clickable knowledge base hyperlinks, a standardized native Word endnote letter (<code class="text-purple-300 font-mono text-xs">&lt;w:endnote&gt;</code>) in Times New Roman 12pt double-spaced red text, and deliverable naming <code class="text-purple-300 font-mono text-xs">&lt;filename&gt;_commented.docx</code>.
                 </p>
             </div>
         </div>
 
-        <!-- 3 Sample Showcase Pills -->
+        <!-- Reference Documents Showcase Pills -->
         <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 mb-8 flex flex-wrap items-center justify-between gap-3">
             <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Pre-loaded Reference Papers:</span>
             <div class="flex flex-wrap gap-2">
@@ -99,7 +102,7 @@ def get_thinkingstorm_studio_html(current_user=None):
                     </div>
 
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 mb-1">Student Name</label>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Student Name (Auto-detected if blank)</label>
                         <input type="text" id="studentName" placeholder="e.g. Janeen Espinoza-Hernandez" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500">
                     </div>
 
@@ -114,28 +117,65 @@ def get_thinkingstorm_studio_html(current_user=None):
                     </div>
                 </div>
 
-                <!-- Input Document Card -->
+                <!-- Mode Switcher -->
                 <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
                     <div class="flex items-center justify-between">
                         <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                            <span>📝</span> Manuscript Input
+                            <span>🎯</span> Operational Workflow Mode
                         </h2>
-                        <span class="text-xs text-slate-400 font-mono" id="wordCountLabel">0 words</span>
                     </div>
 
-                    <!-- File Upload Option -->
-                    <div class="border-2 border-dashed border-slate-700 hover:border-purple-500/60 rounded-2xl p-4 text-center cursor-pointer transition bg-slate-950/40" onclick="document.getElementById('fileInput').click()">
-                        <input type="file" id="fileInput" accept=".docx,.pdf,.txt" class="hidden" onchange="handleFileUpload(event)">
-                        <div class="text-xl mb-1">📁</div>
-                        <div class="text-xs font-semibold text-purple-300" id="uploadStatusText">Click to upload .docx manuscript</div>
-                        <p class="text-[10px] text-slate-500 mt-0.5">Supports Microsoft Word (.docx) & plain text</p>
+                    <div class="grid grid-cols-2 gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800 text-xs">
+                        <button type="button" id="tabAiMode" onclick="setMode('ai')" class="py-2.5 px-3 rounded-xl font-bold transition text-center bg-purple-600 text-white shadow-lg">
+                            🤖 Autonomous Socratic AI
+                        </button>
+                        <button type="button" id="tabCustomMode" onclick="setMode('custom')" class="py-2.5 px-3 rounded-xl font-bold transition text-center text-slate-400 hover:text-white">
+                            ✍️ Custom Comments & Endnote
+                        </button>
                     </div>
 
-                    <div class="text-center text-[10px] text-slate-500 uppercase font-bold">OR PASTE MANUSCRIPT PROSE</div>
+                    <!-- Manuscript Upload / Input -->
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-semibold text-slate-300">1. Target Manuscript (.docx)</label>
+                            <span class="text-xs text-slate-400 font-mono" id="wordCountLabel">0 words</span>
+                        </div>
 
-                    <textarea id="manuscriptText" rows="12" placeholder="Paste your student essay, research draft, or personal statement here..." oninput="updateWordCount()" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs text-slate-200 leading-relaxed font-sans focus:outline-none focus:border-purple-500 placeholder-slate-600"></textarea>
+                        <div class="border-2 border-dashed border-slate-700 hover:border-purple-500/60 rounded-2xl p-4 text-center cursor-pointer transition bg-slate-950/40" onclick="document.getElementById('fileInput').click()">
+                            <input type="file" id="fileInput" accept=".docx,.pdf,.txt" class="hidden" onchange="handleFileUpload(event)">
+                            <div class="text-xl mb-1">📁</div>
+                            <div class="text-xs font-semibold text-purple-300" id="uploadStatusText">Click to upload .docx manuscript</div>
+                            <p class="text-[10px] text-slate-500 mt-0.5">Anchors comments directly into native Word XML</p>
+                        </div>
 
-                    <button onclick="executeThinkingStormPipeline()" id="runBtn" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3.5 px-6 rounded-2xl shadow-xl shadow-purple-500/25 transition flex items-center justify-center gap-2 text-xs uppercase tracking-wider">
+                        <div id="manuscriptTextContainer">
+                            <textarea id="manuscriptText" rows="6" placeholder="Or paste student essay prose here..." oninput="updateWordCount()" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs text-slate-200 leading-relaxed font-sans focus:outline-none focus:border-purple-500 placeholder-slate-600"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Custom Input Fields (Visible only in Custom Mode) -->
+                    <div id="customInputSection" class="hidden space-y-4 pt-3 border-t border-slate-800">
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-bold text-purple-300">2. Comments To Add</label>
+                            <button type="button" onclick="insertPromptTemplate()" class="text-[10px] text-purple-400 hover:underline">
+                                📋 Insert Sample Prompt
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-slate-400 leading-tight">
+                            Format: <code class="text-purple-300 font-mono">Quote: "quoted text"</code> followed by <code class="text-purple-300 font-mono">Feedback: CATEGORY comment text...</code>
+                        </p>
+                        <textarea id="customCommentsText" rows="6" placeholder='Quote: "Eliminating tuition would have a huge, positive impact"&#10;Feedback: THESIS STATEMENT Your thesis outlines your broad topic, but could be tighter.&#10;&#10;Quote: "Janeen Espinoza-Hernandez"&#10;Feedback: MLA Ensure you have a right-aligned header in the top-right margin of every page.' class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs text-slate-200 leading-relaxed font-mono focus:outline-none focus:border-purple-500 placeholder-slate-600"></textarea>
+
+                        <div class="pt-2">
+                            <label class="block text-xs font-bold text-purple-300 mb-1">3. Endnote To Add (Times New Roman 12pt Red)</label>
+                            <p class="text-[11px] text-slate-400 mb-2 leading-tight">
+                                Placed as native Word endnote. Placeholders like <code class="text-purple-300">&lt;Student first name&gt;</code> are dynamically populated.
+                            </p>
+                            <textarea id="customEndnoteText" rows="7" placeholder="Dear <Student first name>,&#10;&#10;Thank you for submitting your paper. There are some suggestions that may help improve the quality of the paper:&#10;&#10;Thesis and Main Argument:&#10;Your introduction establishes the central subject...&#10;&#10;Evidence and Analysis:&#10;You incorporate relevant supporting evidence...&#10;&#10;I hope you find the feedback helpful.&#10;All the best.&#10;Raunak Banga" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs text-slate-200 leading-relaxed font-sans focus:outline-none focus:border-purple-500 placeholder-slate-600"></textarea>
+                        </div>
+                    </div>
+
+                    <button onclick="executeThinkingStormPipeline()" id="runBtn" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3.5 px-6 rounded-2xl shadow-xl shadow-purple-500/25 transition flex items-center justify-center gap-2 text-xs uppercase tracking-wider mt-4">
                         <span>🚀</span> Execute Full ThinkingStorm Review Pipeline
                     </button>
                 </div>
@@ -156,15 +196,15 @@ def get_thinkingstorm_studio_html(current_user=None):
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
                         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-slate-400" id="stepRhetoric">
                             <div class="text-[9px] uppercase font-bold text-slate-500">Step 1</div>
-                            <div class="mt-0.5 font-semibold text-slate-300">Rhetorical Scan</div>
+                            <div class="mt-0.5 font-semibold text-slate-300">Quote Run-Splits</div>
                         </div>
                         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-slate-400" id="stepComments">
                             <div class="text-[9px] uppercase font-bold text-slate-500">Step 2</div>
-                            <div class="mt-0.5 font-semibold text-slate-300">Margin Comments</div>
+                            <div class="mt-0.5 font-semibold text-slate-300">Verified Links</div>
                         </div>
                         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-slate-400" id="stepEndnotes">
                             <div class="text-[9px] uppercase font-bold text-slate-500">Step 3</div>
-                            <div class="mt-0.5 font-semibold text-slate-300">3-Domain Endnote</div>
+                            <div class="mt-0.5 font-semibold text-slate-300">Red 12pt Endnote</div>
                         </div>
                         <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-slate-400" id="stepAntiAi">
                             <div class="text-[9px] uppercase font-bold text-slate-500">Step 4</div>
@@ -180,7 +220,7 @@ def get_thinkingstorm_studio_html(current_user=None):
                             <h2 class="text-base font-bold text-white flex items-center gap-2">
                                 <span>💬</span> Socratic Margin Comments & Knowledge Base Hyperlinks
                             </h2>
-                            <p class="text-xs text-slate-400 mt-0.5">Clickable ThinkingStorm links injected natively into Word comment balloons.</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Anchored strictly to quoted words • Clickable ThinkingStorm resource URLs.</p>
                         </div>
                         <span id="commentCountBadge" class="px-2.5 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-full text-xs font-mono font-bold">0 Comments</span>
                     </div>
@@ -192,31 +232,31 @@ def get_thinkingstorm_studio_html(current_user=None):
                         </div>
                     </div>
 
-                    <!-- 3-Domain Endnote Letter Container -->
+                    <!-- Endnote Letter Container -->
                     <div class="border-t border-slate-800 pt-6 space-y-4">
                         <div class="flex items-center justify-between">
                             <div>
                                 <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                                    <span>📜</span> Native Word Endnote Letter (3 Pedagogical Domains)
+                                    <span>📜</span> Native Word Endnote Letter (Times New Roman, 12pt, 2.0 Spacing, Red)
                                 </h3>
-                                <p class="text-xs text-slate-400 mt-0.5">Appears as an official reviewer note at the end of the Word document.</p>
+                                <p class="text-xs text-slate-400 mt-0.5">Generated in <code class="text-purple-300 font-mono">word/endnotes.xml</code> with author signature.</p>
                             </div>
                             <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full">
                                 0% GPTZero Flagged
                             </span>
                         </div>
 
-                        <div id="endnotesContainer" class="space-y-3 bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs text-slate-300 leading-relaxed font-sans">
-                            <p class="text-slate-500 italic">Endnote domains will appear here once generated...</p>
+                        <div id="endnotesContainer" class="space-y-3 bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs text-red-400 leading-relaxed font-serif">
+                            <p class="text-slate-500 italic font-sans">Endnote will appear here once generated...</p>
                         </div>
                     </div>
 
                     <!-- Download Action Bar -->
                     <div class="border-t border-slate-800 pt-6 flex flex-col sm:flex-row gap-3">
-                        <button onclick="downloadThinkingStormDocx()" id="dlCommentedBtn" disabled class="flex-1 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-xl transition text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25">
-                            📥 Download Official ThinkingStorm Review (.docx)
+                        <button onclick="downloadThinkingStormDocx()" id="dlCommentedBtn" disabled class="flex-1 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl transition text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25">
+                            📥 Download &lt;original filename&gt;_commented.docx
                         </button>
-                        <button onclick="downloadAnnotatedDocx()" id="dlAnnotatedBtn" disabled class="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-xl transition text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25">
+                        <button onclick="downloadAnnotatedDocx()" id="dlAnnotatedBtn" disabled class="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl transition text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25">
                             ✍️ Download Admissions Redline (.docx)
                         </button>
                     </div>
@@ -228,6 +268,7 @@ def get_thinkingstorm_studio_html(current_user=None):
     <!-- Embedded Scripts -->
     <script>
         let currentJobId = null;
+        let activeMode = 'ai';
         let generatedReviewData = null;
 
         const SAMPLES = {{
@@ -257,6 +298,51 @@ def get_thinkingstorm_studio_html(current_user=None):
             }}
         }};
 
+        function setMode(mode) {{
+            activeMode = mode;
+            const tabAi = document.getElementById('tabAiMode');
+            const tabCustom = document.getElementById('tabCustomMode');
+            const customSection = document.getElementById('customInputSection');
+
+            if (mode === 'ai') {{
+                tabAi.className = "py-2.5 px-3 rounded-xl font-bold transition text-center bg-purple-600 text-white shadow-lg";
+                tabCustom.className = "py-2.5 px-3 rounded-xl font-bold transition text-center text-slate-400 hover:text-white";
+                customSection.classList.add('hidden');
+            }} else {{
+                tabCustom.className = "py-2.5 px-3 rounded-xl font-bold transition text-center bg-purple-600 text-white shadow-lg";
+                tabAi.className = "py-2.5 px-3 rounded-xl font-bold transition text-center text-slate-400 hover:text-white";
+                customSection.classList.remove('hidden');
+            }}
+        }}
+
+        function insertPromptTemplate() {{
+            document.getElementById('customCommentsText').value = 
+`COMMENTS TO ADD:
+Quote: "Eliminating tuition would have a huge, positive impact"
+Feedback: THESIS STATEMENT Your thesis outlines your broad topic, but could be tighter. Make sure your thesis explicitly previews the major analytical points your body paragraphs will explore.
+
+Quote: "Janeen Espinoza-Hernandez"
+Feedback: MLA Ensure you have a right-aligned header in the top-right margin of every page featuring your last name and page number.`;
+
+            document.getElementById('customEndnoteText').value = 
+`Dear <Student first name>,
+
+Thank you for submitting your paper. There are some suggestions that may help improve the quality of the paper:
+
+Thesis and Main Argument:
+Your introduction establishes the central subject effectively, but your thesis statement could be tighter. Ensure that you clearly state your definitive perspective while previewing the specific supporting points.
+
+Evidence and Analysis:
+You incorporate relevant supporting evidence, research observations, and examples across the body paragraphs. However, some sections move too quickly without pausing to analyze the implications.
+
+Structure and Synthesis:
+The overall progression of your ideas is logical. To improve cohesion, focus on tightening the transitions between major shifts in argument.
+
+I hope you find the feedback helpful.
+All the best.
+Raunak Banga`;
+        }}
+
         function loadSample(key) {{
             const sample = SAMPLES[key];
             if (!sample) return;
@@ -281,7 +367,6 @@ def get_thinkingstorm_studio_html(current_user=None):
             document.getElementById('uploadStatusText').innerText = "Selected: " + file.name;
             const reader = new FileReader();
             reader.onload = function(e) {{
-                // If text file
                 if (file.name.endsWith('.txt')) {{
                     document.getElementById('manuscriptText').value = e.target.result;
                     updateWordCount();
@@ -300,6 +385,9 @@ def get_thinkingstorm_studio_html(current_user=None):
             const style = document.getElementById('academicStyle').value;
             const fileInput = document.getElementById('fileInput');
 
+            const customComments = document.getElementById('customCommentsText').value.trim();
+            const customEndnote = document.getElementById('customEndnoteText').value.trim();
+
             if (!text && (!fileInput.files || fileInput.files.length === 0)) {{
                 alert("Please paste text or select a manuscript file to review.");
                 return;
@@ -309,7 +397,6 @@ def get_thinkingstorm_studio_html(current_user=None):
             runBtn.disabled = true;
             runBtn.innerHTML = "<span>⏳</span> Executing Pipeline...";
 
-            // Update UI telemetry badges
             document.getElementById('pipelineBadge').innerText = "PROCESSING";
             document.getElementById('pipelineBadge').className = "px-2.5 py-1 bg-purple-500/20 text-purple-300 rounded-full text-[10px] font-mono font-bold uppercase animate-pulse";
 
@@ -319,6 +406,10 @@ def get_thinkingstorm_studio_html(current_user=None):
             formData.append("reviewer_initials", initials);
             formData.append("academic_style", style);
             formData.append("text", text);
+            if (activeMode === 'custom') {{
+                formData.append("custom_comments_text", customComments);
+                formData.append("custom_endnote_text", customEndnote);
+            }}
             if (fileInput.files && fileInput.files[0]) {{
                 formData.append("file", fileInput.files[0]);
             }}
@@ -339,7 +430,6 @@ def get_thinkingstorm_studio_html(current_user=None):
 
                 renderReviewResults(data);
 
-                // Highlight telemetry as complete
                 ['stepRhetoric', 'stepComments', 'stepEndnotes', 'stepAntiAi'].forEach(id => {{
                     document.getElementById(id).className = "bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-500/40 text-emerald-300";
                 }});
@@ -361,7 +451,6 @@ def get_thinkingstorm_studio_html(current_user=None):
         }}
 
         function renderReviewResults(data) {{
-            // Render comments
             const container = document.getElementById('commentsContainer');
             container.innerHTML = "";
             document.getElementById('commentCountBadge').innerText = data.comments.length + " Comments";
@@ -374,41 +463,30 @@ def get_thinkingstorm_studio_html(current_user=None):
                         <a href="${{c.link_url}}" target="_blank" class="text-xs font-bold text-blue-400 hover:underline flex items-center gap-1 font-mono">
                             <span>🔗</span> ${{c.category}}
                         </a>
-                        <span class="text-[10px] text-slate-500 font-mono">Comment #${{idx + 1}}</span>
+                        <span class="text-[10px] text-slate-500 font-mono">Comment #${{idx + 1}} (by ${{data.reviewer_name}})</span>
                     </div>
                     <div class="text-[11px] text-slate-400 italic bg-slate-900/60 p-2 rounded-lg border border-slate-800">
-                        Target: "${{c.target_text.substring(0, 85)}}..."
+                        Target Quote: "${{c.target_text.substring(0, 85)}}..."
                     </div>
                     <p class="text-xs text-slate-200 leading-relaxed">${{c.comment_text}}</p>
                 `;
                 container.appendChild(el);
             }});
 
-            // Render Endnotes
             const enContainer = document.getElementById('endnotesContainer');
-            enContainer.innerHTML = `
-                <div class="font-bold text-white text-xs mb-1">Dear ${{data.student_name.split(' ')[0]}},</div>
-                <p class="text-slate-400 text-xs mb-3">Thank you for submitting your paper. There are some suggestions that may help improve the quality of the paper:</p>
-            `;
+            enContainer.innerHTML = "";
 
-            for (const [domain, desc] of Object.entries(data.endnote_domains)) {{
-                const dDiv = document.createElement('div');
-                dDiv.className = "mb-3";
-                dDiv.innerHTML = `
-                    <div class="font-bold text-purple-300 text-xs mb-0.5">${{domain}}:</div>
-                    <div class="text-xs text-slate-300 leading-relaxed">${{desc}}</div>
-                `;
-                enContainer.appendChild(dDiv);
+            if (data.endnote_domains) {{
+                for (const [domain, desc] of Object.entries(data.endnote_domains)) {{
+                    const dDiv = document.createElement('div');
+                    dDiv.className = "mb-3";
+                    dDiv.innerHTML = `
+                        <div class="font-bold text-red-500 text-xs mb-0.5">${{domain}}:</div>
+                        <div class="text-xs text-red-400 leading-relaxed">${{desc.replace(/\\n/g, '<br>')}}</div>
+                    `;
+                    enContainer.appendChild(dDiv);
+                }}
             }}
-
-            const closeDiv = document.createElement('div');
-            closeDiv.className = "pt-2 text-xs text-slate-400";
-            closeDiv.innerHTML = `
-                <p>I hope you find the feedback helpful.</p>
-                <p class="mt-1">All the best,</p>
-                <p class="font-bold text-white mt-0.5">${{data.reviewer_name}}</p>
-            `;
-            enContainer.appendChild(closeDiv);
         }}
 
         function downloadThinkingStormDocx() {{
@@ -421,7 +499,6 @@ def get_thinkingstorm_studio_html(current_user=None):
             window.location.href = "/download/docx/" + currentJobId;
         }}
 
-        // Auto-load sample on load
         window.addEventListener('DOMContentLoaded', () => {{
             loadSample('janeen');
         }});

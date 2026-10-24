@@ -26,7 +26,12 @@ import pypdf
 from engine.processor import ReviewProcessor
 from engine.deep_pipeline import DeepReviewPipeline
 from engine.openxml_track_changes import WordTrackChangesEngine
-from engine.thinkingstorm_engine import ThinkingStormAutomator
+from engine.thinkingstorm_engine import (
+    ThinkingStormAutomator,
+    parse_custom_comments_text,
+    parse_custom_endnote_text,
+    extract_student_first_name
+)
 from engine.self_prompting_framework import SelfPromptingFramework
 from mail.smtp_server import get_spooled_mail
 from payments.institutional_invoicing import create_invoice, get_all_invoices, get_invoice_by_id
@@ -1567,15 +1572,19 @@ async def execute_thinkingstorm_pipeline(
     reviewer_initials: str = Form("RB"),
     academic_style: str = Form("mla"),
     text: str = Form(""),
+    custom_comments_text: str = Form(""),
+    custom_endnote_text: str = Form(""),
     file: UploadFile = File(None)
 ):
     now = time.time()
     job_id = f"ts-{uuid.uuid4().hex[:6]}"
     content = text.strip()
 
-    # If file uploaded
+    # Determine original filename stem
+    original_stem = "manuscript"
     bytes_data = None
     if file and file.filename:
+        original_stem = Path(file.filename).stem
         bytes_data = await file.read()
         if file.filename.endswith(".docx"):
             doc_in = docx.Document(io.BytesIO(bytes_data))
@@ -1592,8 +1601,22 @@ async def execute_thinkingstorm_pipeline(
     # Initialize automator with specified persona
     automator = ThinkingStormAutomator(reviewer_name=reviewer_name, initials=reviewer_initials)
 
-    # 1. Analyze manuscript & generate comments + 3-domain endnotes
-    comments, domains = automator.analyze_manuscript(content, student_name=student_name)
+    # 1. Parse custom inputs OR perform automated Socratic rhetorical analysis
+    domains = {}
+    if custom_comments_text.strip():
+        comments = parse_custom_comments_text(custom_comments_text.strip())
+    else:
+        comments, domains = automator.analyze_manuscript(content, student_name=student_name)
+
+    if custom_endnote_text.strip():
+        endnote_arg = custom_endnote_text.strip()
+        domains_arg = None
+        det_name = extract_student_first_name(content, default=student_name.split()[0] if student_name else "Student")
+        preview_paras = parse_custom_endnote_text(endnote_arg, student_first_name=det_name, reviewer_name=reviewer_name)
+        domains = {"Custom Endnote Letter": "\n\n".join(preview_paras)}
+    else:
+        endnote_arg = None
+        domains_arg = domains
 
     # 2. Create raw base docx
     base_docx_p = OUTPUT_DIR / f"{job_id}_raw.docx"
@@ -1606,15 +1629,16 @@ async def execute_thinkingstorm_pipeline(
                 raw_doc.add_paragraph(p.strip())
         raw_doc.save(str(base_docx_p))
 
-    # 3. Generate native ThinkingStorm deliverable (Comments + Endnotes)
-    commented_filename = f"{job_id}_commented.docx"
+    # 3. Generate native ThinkingStorm deliverable named <original filename>_commented.docx
+    commented_filename = f"{job_id}_{original_stem}_commented.docx"
     commented_path = OUTPUT_DIR / commented_filename
     automator.generate_reviewed_docx(
         input_docx=str(base_docx_p),
         output_docx=str(commented_path),
         student_name=student_name,
         custom_comments=comments,
-        custom_domains=domains
+        custom_domains=domains_arg,
+        custom_endnote_text=endnote_arg
     )
 
     # 4. Generate Admissions Redline deliverable
@@ -2275,14 +2299,14 @@ async def download_file(filename: str):
 
 @app.get("/download/commented/{job_id}")
 async def download_commented_docx(job_id: str):
-    # Locate {job_id}_*commented.docx
+    # Locate {job_id}_*commented.docx and deliver as <original filename>_commented.docx
     for candidate in OUTPUT_DIR.iterdir():
         if candidate.name.startswith(f"{job_id}_") and "commented" in candidate.name and candidate.name.endswith(".docx"):
-            return FileResponse(candidate, filename=candidate.name)
-    # Check if raw commented replica exists in output
+            clean_filename = candidate.name[len(f"{job_id}_"):]
+            return FileResponse(candidate, filename=clean_filename)
     for candidate in OUTPUT_DIR.iterdir():
-        if "commented" in candidate.name and candidate.name.endswith(".docx"):
-            return FileResponse(candidate, filename=candidate.name)
+        if candidate.name.startswith(f"{job_id}") and "commented" in candidate.name and candidate.name.endswith(".docx"):
+            return FileResponse(candidate, filename="ThinkingStorm_commented.docx")
     # Fallback to standard docx
     return await download_docx_by_job_id(job_id)
 
