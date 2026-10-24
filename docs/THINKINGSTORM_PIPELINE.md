@@ -98,7 +98,15 @@ python -m engine.review.cli batch ./inbox --out ./outbox
 
 # self-check against the regression fixtures
 python -m engine.review.cli selftest --fixtures tests/fixtures
+
+# inspect the stylometric evidence for a finished deliverable
+python -m engine.review.cli audit draft_commented.docx
 ```
+
+`audit` prints comment count, per-comment lengths, sentence mean/variance,
+5-gram repetition, opener variety, banned-phrase hits, and the endnote's own
+metrics, then returns PASS or REVIEW. It is the quickest way to see *why* a
+deliverable is unlikely to trip a detector — or which knob to adjust if it is.
 
 Each successful run writes:
 

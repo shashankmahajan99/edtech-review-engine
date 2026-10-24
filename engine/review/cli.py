@@ -8,6 +8,7 @@ Examples
     python -m engine.review.cli watch --inbox ./inbox --outbox ./outbox
     python -m engine.review.cli selftest --fixtures tests/fixtures
     python -m engine.review.cli dry-run draft.docx
+    python -m engine.review.cli audit deliverable_commented.docx
 """
 from __future__ import annotations
 
@@ -130,6 +131,68 @@ def cmd_selftest(args: argparse.Namespace) -> int:
     return 0 if failures == 0 else 1
 
 
+def cmd_audit(args: argparse.Namespace) -> int:
+    """Show the stylometric evidence for a finished deliverable."""
+    import zipfile
+
+    from lxml import etree
+
+    from .style_guard import (
+        banned_hits, burstiness, opener_ratio, repeated_ngram_ratio,
+    )
+    from .validate import W as W_TAG, _comment_body
+
+    path = Path(args.file)
+    if not path.exists():
+        print(f"not found: {path}", file=sys.stderr)
+        return 2
+    with zipfile.ZipFile(path) as z:
+        names = set(z.namelist())
+        if "word/comments.xml" not in names or "word/endnotes.xml" not in names:
+            print("no ThinkingStorm deliverable parts in this file", file=sys.stderr)
+            return 2
+        c_root = etree.fromstring(z.read("word/comments.xml"))
+        e_root = etree.fromstring(z.read("word/endnotes.xml"))
+
+    bodies = [_comment_body(c) for c in c_root.findall(f"{W_TAG}comment")]
+    bodies = [b for b in bodies if b]
+    endnote = ""
+    for en in e_root.findall(f"{W_TAG}endnote"):
+        if en.get(f"{W_TAG}id") == "1":
+            endnote = " ".join(
+                "".join(t.text or "" for t in p.iter(f"{W_TAG}t"))
+                for p in en.findall(f"{W_TAG}p")
+            ).strip()
+
+    joined = " ".join(bodies)
+    mean, std = burstiness(joined)
+    en_mean, en_std = burstiness(endnote)
+    hits = sorted({h for b in bodies + [endnote] for h in banned_hits(b)})
+    lengths = [len(b.split()) for b in bodies]
+
+    print(f"FILE       {path.name}")
+    print(f"comments   {len(bodies)}")
+    print(f"lengths    {lengths}")
+    print(f"sentences  mean {mean:.1f} words | variance(std) {std:.2f}")
+    print(f"5-grams    repeat ratio {repeated_ngram_ratio(bodies):.3f}")
+    print(f"openers    variety {opener_ratio(bodies):.2f}")
+    print(f"endnote    {len(endnote.split())} words | "
+          f"mean {en_mean:.1f} | std {en_std:.2f}")
+    print(f"banned     {hits or 'none'}")
+
+    ok = True
+    if len({round(length, 0) for length in lengths}) < 2 and len(bodies) >= 4:
+        print("note       comment lengths cluster; add short/long variety")
+    if len(bodies) >= 3 and std < 2.6:
+        ok = False
+        print("FAIL       sentence lengths too uniform for the human band")
+    if hits:
+        ok = False
+        print("FAIL       banned AI phrasing present")
+    print("RESULT     " + ("PASS" if ok else "REVIEW"))
+    return 0 if ok else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="engine.review.cli",
@@ -177,6 +240,10 @@ def build_parser() -> argparse.ArgumentParser:
     selftest.add_argument("--fixtures", default="tests/fixtures")
     selftest.add_argument("--out", default=None)
     selftest.set_defaults(func=cmd_selftest)
+
+    audit = sub.add_parser("audit", help="show stylometric metrics for a deliverable")
+    audit.add_argument("file")
+    audit.set_defaults(func=cmd_audit)
     return parser
 
 
