@@ -26,6 +26,7 @@ import pypdf
 from engine.processor import ReviewProcessor
 from engine.deep_pipeline import DeepReviewPipeline
 from engine.openxml_track_changes import WordTrackChangesEngine
+from engine.thinkingstorm_engine import ThinkingStormAutomator
 from engine.self_prompting_framework import SelfPromptingFramework
 from mail.smtp_server import get_spooled_mail
 from payments.institutional_invoicing import create_invoice, get_all_invoices, get_invoice_by_id
@@ -887,6 +888,7 @@ async def landing_page(request: Request):
                 <a href="#diff" class="text-slate-300 hover:text-white transition">Live Revision Diff</a>
                 <a href="#calculator" class="text-slate-300 hover:text-white transition">Firm ROI</a>
                 <a href="#pricing" class="text-slate-300 hover:text-white transition">Retainers</a>
+                <a href="/thinkingstorm" class="text-purple-400 hover:text-purple-300 transition text-xs font-bold flex items-center gap-1 bg-purple-950/40 border border-purple-500/40 px-3 py-1 rounded-xl shadow-lg">⚡ ThinkingStorm Studio</a>
                 <a href="/reviewer" class="text-emerald-400 hover:text-emerald-300 transition flex items-center gap-1.5">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     Reviewer Desk
@@ -1547,6 +1549,124 @@ async def client_status(job_id: str):
 # ==========================================
 # REVIEWER PRODUCTION WORKBENCH (PILLAR 4)
 # ==========================================
+
+# =====================================================================
+# THINKINGSTORM / TRIVIUM REVIEWER REPLICATION STUDIO
+# =====================================================================
+@app.get("/thinkingstorm", response_class=HTMLResponse)
+async def thinkingstorm_studio(request: Request):
+    user = get_current_user(request)
+    from portal.thinkingstorm_view import get_thinkingstorm_studio_html
+    return HTMLResponse(get_thinkingstorm_studio_html(user))
+
+
+@app.post("/api/thinkingstorm/execute")
+async def execute_thinkingstorm_pipeline(
+    student_name: str = Form("Student"),
+    reviewer_name: str = Form("Raunak Banga"),
+    reviewer_initials: str = Form("RB"),
+    academic_style: str = Form("mla"),
+    text: str = Form(""),
+    file: UploadFile = File(None)
+):
+    now = time.time()
+    job_id = f"ts-{uuid.uuid4().hex[:6]}"
+    content = text.strip()
+
+    # If file uploaded
+    bytes_data = None
+    if file and file.filename:
+        bytes_data = await file.read()
+        if file.filename.endswith(".docx"):
+            doc_in = docx.Document(io.BytesIO(bytes_data))
+            content = "\n\n".join([p.text for p in doc_in.paragraphs if p.text.strip()])
+        else:
+            content = bytes_data.decode("utf-8", errors="ignore")
+
+    content = normalize_extracted_text(content)
+    if not content:
+        raise HTTPException(status_code=400, detail="No manuscript text provided.")
+
+    word_count = len(content.split())
+
+    # Initialize automator with specified persona
+    automator = ThinkingStormAutomator(reviewer_name=reviewer_name, initials=reviewer_initials)
+
+    # 1. Analyze manuscript & generate comments + 3-domain endnotes
+    comments, domains = automator.analyze_manuscript(content, student_name=student_name)
+
+    # 2. Create raw base docx
+    base_docx_p = OUTPUT_DIR / f"{job_id}_raw.docx"
+    if bytes_data and file and file.filename.endswith(".docx"):
+        base_docx_p.write_bytes(bytes_data)
+    else:
+        raw_doc = docx.Document()
+        for p in content.split("\n\n"):
+            if p.strip():
+                raw_doc.add_paragraph(p.strip())
+        raw_doc.save(str(base_docx_p))
+
+    # 3. Generate native ThinkingStorm deliverable (Comments + Endnotes)
+    commented_filename = f"{job_id}_commented.docx"
+    commented_path = OUTPUT_DIR / commented_filename
+    automator.generate_reviewed_docx(
+        input_docx=str(base_docx_p),
+        output_docx=str(commented_path),
+        student_name=student_name,
+        custom_comments=comments,
+        custom_domains=domains
+    )
+
+    # 4. Generate Admissions Redline deliverable
+    annotated_filename = f"{job_id}_annotated.docx"
+    annotated_path = OUTPUT_DIR / annotated_filename
+    review_payload = deep_pipeline.execute_3pass_review(content, mode="academic", target_institution=academic_style)
+    review_dict = review_payload.model_dump()
+
+    track_engine.create_trivium_certified_document(
+        text=content,
+        output_path=str(annotated_path),
+        line_edits=review_dict.get("line_edits", []),
+        student_name=student_name,
+        institution=f"ThinkingStorm Writing Center ({academic_style.upper()})",
+        submission_id=f"TS-{job_id}",
+        rubric_scores=review_dict.get("category_scores"),
+        tutor_letter=review_dict.get("tutor_overview_letter")
+    )
+
+    # 5. Generate Report HTML
+    html_filename = f"{job_id}_report.html"
+    processor.generate_html_report(review_dict, str(OUTPUT_DIR / html_filename))
+
+    # 6. Persist in Database
+    with get_db() as conn:
+        conn.execute("""
+            INSERT OR REPLACE INTO submissions (
+                job_id, client_name, email, package, mode, original_text, sanitized_text,
+                pii_token_map, overall_score, status, docx_filename, html_filename,
+                target_institution, counselor_brief, word_count, created_at
+            ) VALUES (?, ?, ?, 'ThinkingStorm Studio', 'academic', ?, ?, '{}', 88, 'approved', ?, ?, ?, 'ThinkingStorm Socratic Review', ?, ?)
+        """, (
+            job_id, student_name, "personal.reviewer@apexreview.org", content, content,
+            annotated_filename, html_filename, f"Academic Writing ({academic_style.upper()})", word_count, now
+        ))
+
+    return {
+        "job_id": job_id,
+        "student_name": student_name,
+        "reviewer_name": reviewer_name,
+        "reviewer_initials": reviewer_initials,
+        "academic_style": academic_style,
+        "word_count": word_count,
+        "comments": comments,
+        "endnote_domains": domains,
+        "commented_docx_url": f"/download/commented/{job_id}",
+        "annotated_docx_url": f"/download/docx/{job_id}",
+        "report_url": f"/download/report/{job_id}",
+        "status": "success"
+    }
+
+
 @app.get("/reviewer", response_class=HTMLResponse)
 async def reviewer_workbench(request: Request):
     user = get_current_user(request)
