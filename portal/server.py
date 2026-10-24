@@ -1598,26 +1598,6 @@ async def execute_thinkingstorm_pipeline(
 
     word_count = len(content.split())
 
-    # Initialize automator with specified persona
-    automator = ThinkingStormAutomator(reviewer_name=reviewer_name, initials=reviewer_initials)
-
-    # 1. Parse custom inputs OR perform automated Socratic rhetorical analysis
-    domains = {}
-    if custom_comments_text.strip():
-        comments = parse_custom_comments_text(custom_comments_text.strip())
-    else:
-        comments, domains = automator.analyze_manuscript(content, student_name=student_name)
-
-    if custom_endnote_text.strip():
-        endnote_arg = custom_endnote_text.strip()
-        domains_arg = None
-        det_name = extract_student_first_name(content, default=student_name.split()[0] if student_name else "Student")
-        preview_paras = parse_custom_endnote_text(endnote_arg, student_first_name=det_name, reviewer_name=reviewer_name)
-        domains = {"Custom Endnote Letter": "\n\n".join(preview_paras)}
-    else:
-        endnote_arg = None
-        domains_arg = domains
-
     # 2. Create raw base docx
     base_docx_p = OUTPUT_DIR / f"{job_id}_raw.docx"
     if bytes_data and file and file.filename.endswith(".docx"):
@@ -1632,14 +1612,80 @@ async def execute_thinkingstorm_pipeline(
     # 3. Generate native ThinkingStorm deliverable named <original filename>_commented.docx
     commented_filename = f"{job_id}_{original_stem}_commented.docx"
     commented_path = OUTPUT_DIR / commented_filename
-    automator.generate_reviewed_docx(
-        input_docx=str(base_docx_p),
-        output_docx=str(commented_path),
-        student_name=student_name,
-        custom_comments=comments,
-        custom_domains=domains_arg,
-        custom_endnote_text=endnote_arg
-    )
+
+    manual_mode = bool(custom_comments_text.strip() or custom_endnote_text.strip())
+    if manual_mode:
+        # Reviewer-supplied comments/endnote keep the legacy exact-injection path.
+        automator = ThinkingStormAutomator(reviewer_name=reviewer_name, initials=reviewer_initials)
+        domains = {}
+        if custom_comments_text.strip():
+            comments = parse_custom_comments_text(custom_comments_text.strip())
+        else:
+            comments, domains = automator.analyze_manuscript(content, student_name=student_name)
+
+        if custom_endnote_text.strip():
+            endnote_arg = custom_endnote_text.strip()
+            domains_arg = None
+            det_name = extract_student_first_name(
+                content, default=student_name.split()[0] if student_name else "Student"
+            )
+            preview_paras = parse_custom_endnote_text(
+                endnote_arg, student_first_name=det_name, reviewer_name=reviewer_name
+            )
+            domains = {"Custom Endnote Letter": "\n\n".join(preview_paras)}
+        else:
+            endnote_arg = None
+            domains_arg = domains
+
+        automator.generate_reviewed_docx(
+            input_docx=str(base_docx_p),
+            output_docx=str(commented_path),
+            student_name=student_name,
+            custom_comments=comments,
+            custom_domains=domains_arg,
+            custom_endnote_text=endnote_arg,
+        )
+    else:
+        # Deterministic, zero-token pipeline with a mandatory release gate.
+        from engine.review.links import link_for
+        from engine.review.pipeline import PipelineError, review_document
+
+        try:
+            ts_result = review_document(
+                str(base_docx_p),
+                output_dir=str(OUTPUT_DIR),
+                reviewer_name=reviewer_name,
+                reviewer_initials=reviewer_initials,
+                student_name=student_name,
+                academic_style=academic_style,
+                allow_existing_comments=True,
+                overwrite=True,
+            )
+        except PipelineError as exc:
+            raise HTTPException(status_code=422, detail=f"Review pipeline rejected this manuscript: {exc}")
+
+        if Path(ts_result.output_path) != commented_path:
+            Path(ts_result.output_path).replace(commented_path)
+
+        comments = [
+            {
+                "target_text": c["quote"],
+                "category": c["category"] or "FEEDBACK",
+                "comment_text": c["body"],
+                "link_url": link_for(c["category"]) if c["category"] else "",
+            }
+            for c in ts_result.comments
+        ]
+        domains = {}
+        endnote_paras = ts_result.endnote
+        idx = 2
+        while idx < len(endnote_paras):
+            line = endnote_paras[idx]
+            if line.endswith(":") and idx + 1 < len(endnote_paras):
+                domains[line.rstrip(":")] = endnote_paras[idx + 1]
+                idx += 2
+            else:
+                idx += 1
 
     # 4. Generate Admissions Redline deliverable
     annotated_filename = f"{job_id}_annotated.docx"

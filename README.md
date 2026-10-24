@@ -4,6 +4,28 @@ A complete, end-to-end digital business engine designed to disintermediate legac
 
 ---
 
+## ThinkingStorm Deliverable Pipeline (v2, offline)
+
+The review desk runs on a deterministic engine that needs **no LLM, no network,
+and zero tokens** to turn a student draft into a native Word deliverable
+(`<name>_commented.docx`) with sentence-anchored comments, knowledge-base links,
+and the red Times New Roman 12 pt endnote letter.
+
+```bash
+python -m engine.review.cli review draft.docx      # one file
+python -m engine.review.cli batch ./inbox          # a folder
+python -m engine.review.cli watch                  # hands-free inbox watcher
+python -m engine.review.cli selftest               # regression fixtures
+python -m unittest discover -s tests -v            # full test suite
+```
+
+Every deliverable passes a release gate (text preservation, anchor integrity,
+link allow-list, comment voice, AI-style proxies, endnote typography) or it is
+not written at all. Full design and operations:
+[`docs/THINKINGSTORM_PIPELINE.md`](docs/THINKINGSTORM_PIPELINE.md).
+
+---
+
 ## Architecture Overview
 
 ```

@@ -4,6 +4,9 @@ __pycache__/
 *.log
 output/
 scratch/
+inbox/
+outbox/
+tests/_out/
 browser_data/
 browser_profile/
 .pytest_cache/

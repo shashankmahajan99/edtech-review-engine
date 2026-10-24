@@ -1,0 +1,186 @@
+# ThinkingStorm Deliverable Pipeline (v2)
+
+Deterministic, offline review engine that turns a raw student `.docx` into the
+same shape of deliverable the reviewer produces by hand:
+
+`<original filename>_commented.docx`
+- native Word margin comments anchored to the exact quoted sentence,
+- ALL-CAPS knowledge-base link at the start of each labelled comment,
+- a native Word endnote letter in red Times New Roman 12 pt, double spaced.
+
+**No model calls, no network, no tokens.** The same input always produces the
+same review, on any machine with Python and `python-docx`.
+
+---
+
+## 1. Why this replaces the old generator
+
+| Old behaviour | v2 behaviour |
+| --- | --- |
+| Anchored `p[:80]` truncations, sometimes mid-word | Sentence segmentation with exact character spans; anchors always fall on word boundaries |
+| 4-6 canned comments reused across every document | 40+ evidence rules, 3-4 phrasings per rule, chosen from the document fingerprint |
+| One template endnote for every student | Three domain paragraphs composed from the findings, with per-document phrasing |
+| No verification before download | A release gate re-opens the file and rejects it on any inconsistency |
+| No way to run in bulk | CLI, batch mode, and a zero-token inbox watcher |
+
+---
+
+## 2. Pipeline stages
+
+```
+raw.docx
+  │
+  ├─ docmodel      paragraphs, runs, character offsets, regions
+  │                (front matter / title / abstract / body / references)
+  ├─ segmenter     abbreviation-safe sentences with exact offsets
+  ├─ analysis      logical blocks → 40+ high-precision findings
+  ├─ selection     budget, category caps, overlap checks, merged labels
+  ├─ voice         human-voiced comment text (deterministic variant choice)
+  ├─ endnote       three personalised domain paragraphs
+  ├─ writer        OpenXML: run splitting, comments part, endnote part
+  └─ validate      RELEASE GATE — any failure deletes the deliverable
+```
+
+Key design decision: rhetorical rules run over **logical blocks** (consecutive
+paragraphs joined when a sentence is split across them), while every anchor is
+still mapped back to one real paragraph, because a Word comment cannot span
+paragraphs.
+
+---
+
+## 3. Release gate (what must pass before a file is shipped)
+
+Structural
+- opens with `python-docx`; all parts present (`comments.xml`, `endnotes.xml`,
+  comments rels, content types);
+- every original paragraph's text is byte-identical to the input;
+- every comment id has exactly one range start and one range end in the same
+  paragraph, followed by a matching `commentReference` run;
+- no overlapping ranges, no duplicate ids.
+
+Content
+- 5-22 comments per review;
+- 6-95 words each, terminal punctuation, no double spaces;
+- the anchored text equals the quote the reviewer selected;
+- every hyperlink resolves to an allow-listed
+  `https://knowledge.thinkingstorm.com/` article;
+- no comment repeats its own category label.
+
+Style / AI-detector proxies
+- no banned LLM vocabulary (`delve`, `tapestry`, `furthermore`, ...);
+- sentence-length burstiness inside the human band;
+- no repeated 5-grams across comments;
+- varied sentence openers.
+
+Endnote
+- greeting, three domain headings, 120+ words, reviewer signature;
+- every run Times New Roman, 12 pt, `FF0000`, 480-twip double spacing.
+
+A rejected manuscript produces no deliverable. The reason is written to the
+JSON sidecar and (in watcher mode) to `failed/<name>.error.txt`.
+
+---
+
+## 4. Command line
+
+```bash
+# one file
+python -m engine.review.cli review draft.docx
+
+# explicit output folder and style
+python -m engine.review.cli review draft.docx --out deliverables --style apa
+
+# inspect the diagnostics without writing anything
+python -m engine.review.cli dry-run draft.docx
+
+# a whole folder
+python -m engine.review.cli batch ./inbox --out ./outbox
+
+# self-check against the regression fixtures
+python -m engine.review.cli selftest --fixtures tests/fixtures
+```
+
+Each successful run writes:
+
+- `<name>_commented.docx` — the deliverable;
+- `<name>_commented.review.json` — findings, selected comments, endnote, gate
+  metrics. Useful for QA audits and for spotting a rule that fires too often.
+
+Python API:
+
+```python
+from engine.review.pipeline import review_document
+
+result = review_document("draft.docx", output_dir="out")
+print(result.output_path, len(result.comments), result.validation.ok)
+```
+
+---
+
+## 5. Hands-free operation (inbox watcher)
+
+```bash
+python -m engine.review.cli watch --inbox inbox --outbox outbox --interval 10
+```
+
+Drop a `.docx` into `inbox/`; within the interval the watcher writes the
+deliverable and report into `outbox/`, then moves the source to `inbox/done/`.
+Rejected files go to `inbox/failed/` with an `.error.txt` explaining why.
+Processed files are recorded in `outbox/processed.json`, so restarting the
+watcher never double-reviews a submission. Create `inbox/STOP` to stop it.
+
+On Windows:
+
+```powershell
+.\start_ts_watcher.ps1        # background daemon + log tail
+.\stop_ts_watcher.ps1
+```
+
+---
+
+## 6. The reviewer voice
+
+Comments are mined from the three reference deliverables in
+`style_corpus/exemplars.json` (Janeen, Andrea, Kiran). The rules:
+
+- diagnosis first, then one concrete directive; occasionally a Socratic question;
+- 20-45 words typical, but deliberately uneven — a short command next to a
+  two-clause explanation. Uniform length is the clearest machine tell;
+- address the student directly ("you", "your paragraph"), never the document;
+- name the actual thing: the vague word, the date, the citation, the studies;
+- no hedging boilerplate ("it is important to note"), no LLM vocabulary.
+
+The variant for a given finding is `sha1(document fingerprint | rule | position)`.
+So two different drafts almost never share phrasing, and re-running the same
+draft is reproducible.
+
+---
+
+## 7. Tests
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+The suite covers document regions, segmentation edge cases, rule firing on real
+drafts, absence of known false positives, composition determinism, banned
+phrasing, endnote structure and typography, link allow-listing, the release
+gate, refusal to re-review an already-commented file, and a static check that
+no module imports a network or LLM client.
+
+---
+
+## 8. Adding a rule
+
+1. Add the detector to `engine/review/analysis.py`, returning a `Finding` with a
+   precise span, category, priority, and facts.
+2. Add 3-4 phrasings to `TEMPLATES` in `engine/review/voice.py` using the facts.
+3. Map the category to a knowledge-base article in `engine/review/links.py`.
+4. Add a fixture assertion in `tests/test_review_pipeline.py`.
+5. Run `selftest`; a new rule that fires on the header or on citations is almost
+   always a false positive — anchor and precision matter more than coverage.
+
+Priorities: 80+ for certain formatting errors and thesis problems, 60-79 for
+structural rhetoric, 50-59 for stylistic observation. Selection spends its
+budget from the top, caps each category, and allows one comment per paragraph
+(two on short heading lines).

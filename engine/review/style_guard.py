@@ -1,0 +1,114 @@
+"""Deterministic 'does this read human?' checks.
+
+Detectors such as GPTZero score text on burstiness (variance in sentence
+length), lexical repetition, and tell-tale LLM phrasing.  We cannot call the
+detector offline, so the pipeline enforces the observable proxies that separate
+the reviewer's real comments from generated boilerplate:
+
+* no banned LLM vocabulary,
+* sentence-length variance inside a human band,
+* no repeated 5-gram across comments,
+* varied sentence openers.
+
+Thresholds are calibrated so the three human exemplars pass comfortably and
+canned template text fails.
+"""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+
+from .voice import BANNED_PHRASES
+
+MIN_BURSTINESS_STD = 2.6
+MAX_MEAN_SENTENCE = 32.0
+MAX_NGRAM_REPEAT = 0.12
+MIN_UNIQUE_OPENERS = 0.65
+
+
+@dataclass
+class StyleReport:
+    ok: bool
+    errors: list[str]
+    metrics: dict
+
+
+def sentences(text: str) -> list[str]:
+    parts = re.split(r"(?<=[.!?])\s+", re.sub(r"\s+", " ", text).strip())
+    return [p for p in parts if p.strip()]
+
+
+def burstiness(text: str) -> tuple[float, float]:
+    lengths = [len(s.split()) for s in sentences(text)]
+    if len(lengths) < 2:
+        return (0.0, 0.0)
+    mean = sum(lengths) / len(lengths)
+    var = sum((x - mean) ** 2 for x in lengths) / len(lengths)
+    return (mean, var ** 0.5)
+
+
+def repeated_ngram_ratio(texts: list[str], n: int = 5) -> float:
+    grams: dict[tuple[str, ...], int] = {}
+    total = 0
+    for text in texts:
+        words = re.findall(r"[a-z']+", text.lower())
+        if len(words) < n:
+            continue
+        for i in range(len(words) - n + 1):
+            gram = tuple(words[i:i + n])
+            grams[gram] = grams.get(gram, 0) + 1
+            total += 1
+    if not total:
+        return 0.0
+    repeats = sum(count - 1 for count in grams.values() if count > 1)
+    return repeats / total
+
+
+def opener_ratio(texts: list[str]) -> float:
+    openers = []
+    for text in texts:
+        first = sentences(text)
+        if first:
+            openers.append(" ".join(re.findall(r"[a-z']+", first[0].lower())[:3]))
+    if not openers:
+        return 1.0
+    return len(set(openers)) / len(openers)
+
+
+def banned_hits(text: str) -> list[str]:
+    low = text.lower()
+    return [p for p in BANNED_PHRASES if p in low]
+
+
+def check_text_block(texts: list[str], label: str = "comments") -> StyleReport:
+    errors: list[str] = []
+    joined = " ".join(texts)
+    mean, std = burstiness(joined)
+    ngram = repeated_ngram_ratio(texts)
+    openers = opener_ratio(texts)
+
+    hits: list[str] = []
+    for text in texts:
+        hits.extend(banned_hits(text))
+    if hits:
+        errors.append(f"{label}: banned AI phrasing {sorted(set(hits))}")
+    if len(texts) >= 3 and std < MIN_BURSTINESS_STD:
+        errors.append(f"{label}: sentence lengths too uniform (std {std:.1f} < {MIN_BURSTINESS_STD})")
+    if mean > MAX_MEAN_SENTENCE:
+        errors.append(f"{label}: average sentence too long ({mean:.1f} words)")
+    if len(texts) >= 3 and ngram > MAX_NGRAM_REPEAT:
+        errors.append(f"{label}: repeated 5-grams {ngram:.2f} > {MAX_NGRAM_REPEAT}")
+    if len(texts) >= 4 and openers < MIN_UNIQUE_OPENERS:
+        errors.append(f"{label}: sentence openers repeat too often ({openers:.2f})")
+
+    return StyleReport(
+        ok=not errors,
+        errors=errors,
+        metrics={
+            "mean_sentence": round(mean, 2),
+            "burstiness_std": round(std, 2),
+            "ngram_repeat": round(ngram, 3),
+            "unique_openers": round(openers, 2),
+            "banned": sorted(set(hits)),
+        },
+    )

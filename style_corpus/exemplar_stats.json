@@ -1,0 +1,57 @@
+{
+  "documents": 3,
+  "comments": 40,
+  "comments_per_doc": [
+    14,
+    9,
+    17
+  ],
+  "labelled_ratio": 0.525,
+  "categories": [
+    "ABSTRACT",
+    "ANALYSIS",
+    "ANALYSIS OF EVIDENCE",
+    "CONCLUSION",
+    "COUNTER-ARGUMENT",
+    "EVIDENCE",
+    "FRAGMENTS",
+    "INFORMAL WRITING",
+    "ORGANISATION",
+    "PUNCTUATION",
+    "STATISTICS",
+    "SUBJECT VERB AGREEMENT",
+    "SUBJECT-VERB AGREEMENT",
+    "THESIS STATEMENT",
+    "TOPIC SENTENCE",
+    "TRANSITION"
+  ],
+  "words_per_comment": {
+    "min": 9,
+    "max": 65,
+    "mean": 27.3
+  },
+  "questions_ratio": 0.125,
+  "endnote_words": [
+    214,
+    189,
+    251
+  ],
+  "endnote_domains": [
+    [
+      "Thesis and Main Argument",
+      "Evidence and Analysis",
+      "Structure and Counterargument"
+    ],
+    [
+      "Introduction and Assertion of Thesis",
+      "Analysis and Evidence",
+      "Clarity and Proofreading"
+    ],
+    [
+      "Thank you for submitting in your paper. You need to focus on",
+      "Thesis and overall focus",
+      "Evidence and analysis",
+      "Conclusion and synthesis"
+    ]
+  ]
+}
