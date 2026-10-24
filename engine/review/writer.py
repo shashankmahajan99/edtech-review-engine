@@ -422,13 +422,20 @@ def _ensure_endnote_reference(model: DocumentModel):
     body = model.doc.element.body
     if body.find(f".//{W}endnoteReference") is not None:
         return
-    p = etree.SubElement(body, f"{W}p")
+    p = etree.Element(f"{W}p")
     run = etree.SubElement(p, f"{W}r")
     rpr = etree.SubElement(run, f"{W}rPr")
     style = etree.SubElement(rpr, f"{W}rStyle")
     style.set(f"{W}val", "EndnoteReference")
     ref = etree.SubElement(run, f"{W}endnoteReference")
     ref.set(f"{W}id", "1")
+    # w:sectPr must stay the last child of w:body; appending after it makes Word
+    # repair the file and discard the endnote.
+    sect = body.find(f"{W}sectPr")
+    if sect is not None:
+        sect.addprevious(p)
+    else:
+        body.append(p)
 
 
 # ---------------------------------------------------------------------------
@@ -436,20 +443,36 @@ def _ensure_endnote_reference(model: DocumentModel):
 # ---------------------------------------------------------------------------
 
 def _ensure_rel(root, rel_id: str, rel_type: str, target: str, external: bool = False):
+    """Keep exactly one relationship per type.
+
+    A source document that already has an endnotes/comments part carries its own
+    relationship (e.g. ``rId6``).  Adding a second relationship to the same part
+    is what makes Word declare the package damaged, so the existing one is
+    reused and re-pointed instead of duplicated.
+    """
+    single_part = rel_type.rsplit("/", 1)[-1] in {"comments", "endnotes"}
     for rel in root.findall(f"{REL}Relationship"):
-        if rel.get("Id") == rel_id:
-            return
+        if rel.get("Id") == rel_id or (single_part and rel.get("Type") == rel_type):
+            rel.set("Type", rel_type)
+            rel.set("Target", target)
+            if external:
+                rel.set("TargetMode", "External")
+            elif rel.get("TargetMode") is not None:
+                del rel.attrib["TargetMode"]
+            return rel.get("Id")
     rel = etree.SubElement(root, f"{REL}Relationship")
     rel.set("Id", rel_id)
     rel.set("Type", rel_type)
     rel.set("Target", target)
     if external:
         rel.set("TargetMode", "External")
+    return rel_id
 
 
 def _ensure_override(root, part: str, content_type: str):
     for o in root.findall(f"{CT}Override"):
         if o.get("PartName") == part:
+            o.set("ContentType", content_type)
             return
     o = etree.SubElement(root, f"{CT}Override")
     o.set("PartName", part)

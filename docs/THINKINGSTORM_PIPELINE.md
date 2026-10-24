@@ -54,11 +54,31 @@ paragraphs.
 package: every part except `document.xml`, `comments.xml`, `endnotes.xml`, the
 two relationships files, `styles.xml` and `[Content_Types].xml` is copied
 byte-for-byte, and every paragraph's text is verified identical to the input.
+
+**Native Word objects.** Comments are real `word/comments.xml` entries with
+`commentRangeStart`/`commentRangeEnd`/`commentReference` anchors; the endnote is
+a real `word/endnotes.xml` entry (id 1) referenced by `w:endnoteReference`, with
+Times New Roman 12 pt red runs. The release gate re-opens the package and fails
+the review if:
+
+- comment ranges, references and `comments.xml` ids disagree;
+- an endnote reference has no matching endnote, or the endnote lacks
+  `w:endnoteRef`;
+- `w:sectPr` is not the last body element (appending after it makes Word repair
+  the file and drop the endnote);
+- a part is linked twice (a source file that already has an endnotes part must
+  reuse its relationship, not add a second one);
+- `[Content_Types].xml` has duplicate overrides or wrong comment/endnote types.
+
+This matters because Word silently "repairs" such packages, and the repair
+removes exactly the comments and endnote the review was meant to deliver.
+
 The tracked-changes deliverable is edited in place: only `word/document.xml`
 changes, and only the target span is wrapped in `<w:del>` / `<w:ins>` — fonts,
 bold/italic runs, tables, images, headers and margins are untouched. Edits that
 cannot be isolated safely (they cross a hyperlink or a non-text element) are
-skipped instead of guessed at.
+skipped instead of guessed at. It carries revisions only, not duplicate
+comments; the commented file is the one with comments and the endnote.
 
 Structural
 - opens with `python-docx`; all parts present (`comments.xml`, `endnotes.xml`,

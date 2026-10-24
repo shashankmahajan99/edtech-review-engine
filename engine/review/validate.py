@@ -21,6 +21,7 @@ from .style_guard import check_text_block, banned_hits
 W = f"{{{W_NS}}}"
 R = f"{{{('http://schemas.openxmlformats.org/officeDocument/2006/relationships')}}}"
 PKG = "{http://schemas.openxmlformats.org/package/2006/relationships}"
+CT = "{http://schemas.openxmlformats.org/package/2006/content-types}"
 
 
 @dataclass
@@ -291,5 +292,76 @@ def validate_deliverable(
     # A single long block cannot be judged for opener variety; keep substance checks.
     errors.extend(e for e in en_report.errors if "opener" not in e and "5-gram" not in e)
 
+    errors.extend(_native_package_problems(path))
+
     return ValidationReport(ok=not errors, errors=errors, warnings=warnings, metrics=metrics)
+
+
+def _native_package_problems(path: Path) -> list[str]:
+    """Word opens these files only if the comment/endnote wiring is canonical.
+
+    Two relationships to the same part, a comment id that does not exist in
+    comments.xml, or content after w:sectPr all make Word offer to repair the
+    document and drop the very comments we wrote.
+    """
+    import zipfile
+
+    from lxml import etree as _etree
+
+    problems: list[str] = []
+    try:
+        with zipfile.ZipFile(path) as z:
+            names = set(z.namelist())
+            root = _etree.fromstring(z.read("word/document.xml"))
+            body = root.find(f"{W}body")
+            children = list(body) if body is not None else []
+            sect_indexes = [i for i, child in enumerate(children) if child.tag == f"{W}sectPr"]
+            if sect_indexes and sect_indexes[-1] != len(children) - 1:
+                problems.append("w:sectPr is not the last body element")
+
+            starts = [e.get(f"{W}id") for e in root.findall(f".//{W}commentRangeStart")]
+            ends = [e.get(f"{W}id") for e in root.findall(f".//{W}commentRangeEnd")]
+            refs = [e.get(f"{W}id") for e in root.findall(f".//{W}commentReference")]
+            if sorted(starts) != sorted(ends):
+                problems.append("comment range start/end mismatch")
+            if sorted(starts) != sorted(refs):
+                problems.append("comment range/reference mismatch")
+            if "word/comments.xml" in names:
+                comments = _etree.fromstring(z.read("word/comments.xml"))
+                cids = [c.get(f"{W}id") for c in comments.findall(f"{W}comment")]
+                if sorted(cids) != sorted(starts):
+                    problems.append("comments.xml ids do not match document ranges")
+            elif starts:
+                problems.append("comment ranges without word/comments.xml")
+
+            erefs = [e.get(f"{W}id") for e in root.findall(f".//{W}endnoteReference")]
+            if "word/endnotes.xml" in names:
+                endnotes = _etree.fromstring(z.read("word/endnotes.xml"))
+                eids = [e.get(f"{W}id") for e in endnotes.findall(f"{W}endnote")]
+                for eid in erefs:
+                    if eid not in eids:
+                        problems.append(f"endnote reference {eid} has no endnote")
+            elif erefs:
+                problems.append("endnote references without word/endnotes.xml")
+
+            rels = _etree.fromstring(z.read("word/_rels/document.xml.rels"))
+            rel_ids = [r.get("Id") for r in rels]
+            if len(rel_ids) != len(set(rel_ids)):
+                problems.append("duplicate relationship ids")
+            part_types = [r.get("Type") for r in rels
+                          if (r.get("Type") or "").rsplit("/", 1)[-1] in {"comments", "endnotes"}]
+            if len(part_types) != len(set(part_types)):
+                problems.append("duplicate comments/endnotes relationship")
+            targets = {r.get("Target") for r in rels}
+            for part in ("comments.xml", "endnotes.xml"):
+                if part in names and part not in targets:
+                    problems.append(f"{part} not linked from document rels")
+
+            types = _etree.fromstring(z.read("[Content_Types].xml"))
+            part_names = [o.get("PartName") for o in types.findall(f"{CT}Override")]
+            if len(part_names) != len(set(part_names)):
+                problems.append("duplicate content-type override")
+    except Exception as exc:  # pragma: no cover - defensive
+        problems.append(f"could not inspect package: {exc}")
+    return problems
 
