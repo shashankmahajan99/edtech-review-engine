@@ -326,8 +326,8 @@ let lastData = null;
 function commentsAsText(d) {{
   return (d.comments || []).map((c, i) => {{
     const quote = (c.target_text || "").replace(/\\s+/g, " ").trim();
-    return (i + 1) + '. ' + c.category + ': "' + quote + '"\n' + c.comment_text;
-  }}).join("\n\n");
+    return (i + 1) + '. ' + c.category + ': "' + quote + '"\\n' + c.comment_text;
+  }}).join("\\n\\n");
 }}
 
 function endnoteAsText(d) {{
@@ -339,7 +339,7 @@ function endnoteAsText(d) {{
     parts.push(title + ":", body);
   }});
   parts.push("I hope this feedback is helpful.", "All the best.", d.reviewer_name || "");
-  return parts.join("\n\n").trim();
+  return parts.join("\\n\\n").trim();
 }}
 
 async function copyToClipboard(text) {{

@@ -60,6 +60,18 @@ The thesis states a position but does not show the road ahead. …
 Paste that block into the detector. Comments are individually separable by the
 numbered lines, so you can also isolate the ones that flag.
 
+## External voice design (optional)
+
+`docs/ASTRA_BRIEF.md` is a self-contained prompt pack built from the corpus: the
+task, the measured profile, 51 verbatim comments with their anchored text, and
+the three human endnote letters. Paste it into an external model, return the JSON
+it specifies, and the pattern banks can be regenerated from that answer rather
+than hand-written. Rebuild the brief with:
+
+```
+python tools/export_astra_brief.py
+```
+
 ## Honest limits
 
 - GPTZero has no public API, so this repository cannot score its own output.
