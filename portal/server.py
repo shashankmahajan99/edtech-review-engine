@@ -1442,16 +1442,14 @@ async def submit_manuscript(
     )
     log_compliance_event(job_id, "REVIEW_ENGINE", "Deterministic rubric complete", json.dumps(review_dict))
 
-    # Step 3: Dual-Mode Generation (ThinkingStorm Socratic + Admissions Redline)
-    track_engine.create_trivium_certified_document(
-        text=sanitized_text,
-        output_path=str(docx_path),
-        line_edits=review_dict.get('line_edits', []),
-        student_name=student_name,
-        institution=target_institution or "Accredited Academic Partner",
-        submission_id=f"TS-{job_id}",
-        rubric_scores=review_dict.get("category_scores"),
-        tutor_letter=review_dict.get("tutor_overview_letter")
+    # Tracked changes on the original file (formatting preserved)
+    from engine.review.trackchanges import apply_line_edits as redline_apply
+
+    redline_apply(
+        str(base_docx_p),
+        str(docx_path),
+        review_dict.get('line_edits', []),
+        author="Apex Admissions Editorial Desk",
     )
 
     # ThinkingStorm deliverable: same deterministic pipeline as the Reviewer Studio.
@@ -1688,6 +1686,7 @@ async def execute_thinkingstorm_pipeline(
 
     manual_mode = bool(custom_comments_text.strip() or custom_endnote_text.strip())
     pipeline_warning = ""
+    qa_name = ""
     if manual_mode:
         # Reviewer-supplied comments/endnote keep the legacy exact-injection path.
         automator = ThinkingStormAutomator(reviewer_name=reviewer_name, initials=reviewer_initials)
@@ -1755,12 +1754,24 @@ async def execute_thinkingstorm_pipeline(
             if Path(ts_result.output_path) != commented_path:
                 Path(ts_result.output_path).replace(commented_path)
 
+            qa_name = ""
+            try:
+                qa_name = f"{job_id}_review.json"
+                Path(OUTPUT_DIR / qa_name).write_text(
+                    Path(ts_result.report_path).read_text(encoding="utf-8"),
+                    encoding="utf-8",
+                )
+            except Exception:
+                qa_name = ""
+
             comments = [
                 {
                     "target_text": c["quote"],
                     "category": c["category"] or "FEEDBACK",
                     "comment_text": c["body"],
                     "link_url": link_for(c["category"]) if c["category"] else "",
+                    "paragraph": c.get("paragraph"),
+                    "rule": c.get("rule"),
                 }
                 for c in ts_result.comments
             ]
@@ -1809,15 +1820,15 @@ async def execute_thinkingstorm_pipeline(
         reviewer_name=reviewer_name,
     )
 
-    track_engine.create_trivium_certified_document(
-        text=content,
-        output_path=str(annotated_path),
-        line_edits=review_dict.get("line_edits", []),
-        student_name=student_name,
-        institution=f"ThinkingStorm Writing Center ({academic_style.upper()})",
-        submission_id=f"TS-{job_id}",
-        rubric_scores=review_dict.get("category_scores"),
-        tutor_letter=review_dict.get("tutor_overview_letter")
+    # Tracked changes are applied to the original file: nothing is rebuilt, so
+    # images, tables, fonts and every untouched run survive exactly.
+    from engine.review.trackchanges import apply_line_edits as redline_apply
+
+    redline_apply(
+        str(base_docx_p),
+        str(annotated_path),
+        review_dict.get("line_edits", []),
+        author=reviewer_name,
     )
 
     # 5. Generate Report HTML
@@ -1837,6 +1848,9 @@ async def execute_thinkingstorm_pipeline(
             annotated_filename, html_filename, f"Academic Writing ({academic_style.upper()})", word_count, now
         ))
 
+    reviewed_paragraphs = sorted({
+        c.get("paragraph") for c in comments if isinstance(c, dict) and c.get("paragraph") is not None
+    })
     return {
         "job_id": job_id,
         "student_name": student_name,
@@ -1849,8 +1863,16 @@ async def execute_thinkingstorm_pipeline(
         "commented_docx_url": f"/download/commented/{job_id}",
         "annotated_docx_url": f"/download/docx/{job_id}",
         "report_url": f"/download/report/{job_id}",
+        "qa_report_url": f"/download/{qa_name}" if qa_name else "",
         "status": "success",
         "warning": pipeline_warning,
+        "overall_score": review_dict.get("overall_score"),
+        "executive_summary": review_dict.get("executive_summary"),
+        "rubric": review_dict.get("category_scores", {}),
+        "coverage": {
+            "paragraphs": len([p for p in review_model.paragraphs if p.text.strip()]),
+            "commented": len(reviewed_paragraphs),
+        },
     }
 
 
@@ -3142,7 +3164,7 @@ async def company_governance_dashboard(request: Request):
                     <span class="text-xs font-mono font-bold uppercase tracking-wider text-blue-400">Phase 2: Early-Action Crunch Acceleration</span>
                     <h1 class="text-2xl lg:text-3xl font-black text-white mt-1 tracking-tight">Enterprise Admissions Review Infrastructure</h1>
                     <p class="text-sm text-slate-300 mt-2 leading-relaxed">
-                        Operating as a full-stack educational technology enterprise. Disintermediating legacy BPO outsourcing cartels (ThinkingStorm US $\leftrightarrow$ Trivium India back-end) by delivering native Word OpenXML track changes with guaranteed sub-6h SLA directly to global admissions consultancies.
+                        Operating as a full-stack educational technology enterprise. Disintermediating legacy BPO outsourcing cartels (ThinkingStorm US &harr; Trivium India back-end) by delivering native Word OpenXML track changes with guaranteed sub-6h SLA directly to global admissions consultancies.
                     </p>
                 </div>
                 <div class="bg-slate-950/80 border border-slate-800 p-5 rounded-2xl min-w-[280px] shadow-lg">

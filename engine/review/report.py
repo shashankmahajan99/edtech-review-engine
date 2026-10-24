@@ -104,6 +104,12 @@ _VERDICTS = {
     "abstract_intro": "The abstract restates the introduction rather than summarising findings.",
     "counterargument_missing": "The argument never addresses its strongest objection.",
     "works_cited_top_margin": "Extra blank space precedes the Works Cited heading.",
+    "para_unsupported": "A paragraph argues without bringing in a source.",
+    "para_drift": "A paragraph opens on one claim and closes on another.",
+    "para_filler": "A paragraph repeats the same filler word.",
+    "para_monotone": "A paragraph's sentences are all the same length.",
+    "para_passive": "A paragraph relies on passive constructions.",
+    "para_no_claim": "A paragraph opens with a fact rather than a claim.",
 }
 
 _ACTIONS = {
@@ -138,6 +144,12 @@ _ACTIONS = {
     "statement_generic_claim": "Replace generic praise with a concrete programme detail.",
     "counterargument_missing": "Add and answer the strongest objection to your claim.",
     "quote_no_page": "Add the page number to the quotation.",
+    "para_unsupported": "Add a source to the paragraph that argues without one.",
+    "para_drift": "Return to the opening claim at the end of the paragraph.",
+    "para_filler": "Cut the repeated filler word.",
+    "para_monotone": "Vary sentence length in the flagged paragraph.",
+    "para_passive": "Convert the passive constructions to active verbs.",
+    "para_no_claim": "Open the paragraph with the claim, not the fact.",
 }
 
 _MAJOR_RULES = {

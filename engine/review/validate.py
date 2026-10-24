@@ -152,8 +152,8 @@ def validate_deliverable(
     expected_map = dict(expected)
     ours = set(expected_map)
     minimum = 3 if model.word_count < 300 else (4 if model.word_count < 600 else 5)
-    if not (minimum <= len(ours) <= 22):
-        errors.append(f"comment count {len(ours)} outside {minimum}-22")
+    if not (minimum <= len(ours) <= 34):
+        errors.append(f"comment count {len(ours)} outside {minimum}-34")
     metrics["comments"] = len(ours)
     metrics["pre_existing_comments"] = len(ids) - len(ours)
 
@@ -292,3 +292,4 @@ def validate_deliverable(
     errors.extend(e for e in en_report.errors if "opener" not in e and "5-gram" not in e)
 
     return ValidationReport(ok=not errors, errors=errors, warnings=warnings, metrics=metrics)
+

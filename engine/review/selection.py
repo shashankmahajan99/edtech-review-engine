@@ -70,8 +70,11 @@ class SelectedComment:
     labelled: bool
 
 
-def _target_count(model: DocumentModel) -> int:
+def _target_count(model: DocumentModel, comprehensive: bool = False) -> int:
     words = model.word_count
+    if comprehensive:
+        # Roughly one note per 55 words: a full margin, not a sampler.
+        return max(12, min(34, round(words / 55) + 4))
     return max(7, min(18, round(words / 85) + 3))
 
 
@@ -122,8 +125,9 @@ def _premerge(findings: list[Finding]) -> list[Finding]:
     return out
 
 
-def select_comments(model: DocumentModel, result: AnalysisResult) -> list[SelectedComment]:
-    budget = _target_count(model)
+def select_comments(model: DocumentModel, result: AnalysisResult,
+                    comprehensive: bool = False) -> list[SelectedComment]:
+    budget = _target_count(model, comprehensive)
     findings = sorted(_premerge(result.findings),
                       key=lambda f: (-f.priority, f.paragraph.index, f.start))
 
@@ -133,14 +137,20 @@ def select_comments(model: DocumentModel, result: AnalysisResult) -> list[Select
     per_rule: dict[str, int] = {}
 
     def can_take(f: Finding) -> bool:
-        if per_category.get(f.category, 0) >= CATEGORY_CAPS.get(f.category, 2):
+        cap = CATEGORY_CAPS.get(f.category, 2)
+        if comprehensive and f.category not in {THESIS, CONCLUSION, ABSTRACT, COUNTER, INTRO}:
+            cap += 2
+        if per_category.get(f.category, 0) >= cap:
             return False
-        if per_rule.get(f.rule_id, 0) >= RULE_CAPS.get(f.rule_id, 2):
+        rule_cap = RULE_CAPS.get(f.rule_id, 2)
+        if comprehensive and f.rule_id not in RULE_CAPS:
+            rule_cap = 3
+        if per_rule.get(f.rule_id, 0) >= rule_cap:
             return False
-        # One comment per paragraph keeps the margin readable; long paragraphs
-        # can carry a second note when the two anchors do not overlap.
+        # A full review annotates the paragraph, not just the document: permit
+        # up to three notes on a substantial paragraph when they do not overlap.
         words = len(f.paragraph.words)
-        limit = 2 if words <= 20 or words >= 35 else 1
+        limit = 3 if comprehensive and words >= 45 else (2 if words <= 20 or words >= 35 else 1)
         if per_paragraph.get(f.paragraph.index, 0) >= limit:
             return False
         if any(_overlaps(f, other) for other in chosen):
@@ -155,6 +165,31 @@ def select_comments(model: DocumentModel, result: AnalysisResult) -> list[Select
             per_category[f.category] = per_category.get(f.category, 0) + 1
             per_paragraph[f.paragraph.index] = per_paragraph.get(f.paragraph.index, 0) + 1
             per_rule[f.rule_id] = per_rule.get(f.rule_id, 0) + 1
+
+    if comprehensive:
+        # Coverage pass: every body block with a finding gets up to two notes,
+        # so the review reads as a full margin rather than a sample.
+        chosen_ids = {id(f) for f in chosen}
+        block_of: dict[int, int] = {}
+        for bi, block in enumerate(result.blocks):
+            for paragraph in block.paragraphs:
+                block_of[paragraph.index] = bi
+        for block in result.blocks:
+            paragraph_ids = {p.index for p in block.paragraphs}
+            candidates = [f for f in findings
+                          if f.paragraph.index in paragraph_ids and id(f) not in chosen_ids]
+            candidates.sort(key=lambda f: -f.priority)
+            added = 0
+            for finding in candidates:
+                if added >= 2:
+                    break
+                if can_take(finding):
+                    chosen.append(finding)
+                    chosen_ids.add(id(finding))
+                    per_category[finding.category] = per_category.get(finding.category, 0) + 1
+                    per_paragraph[finding.paragraph.index] = per_paragraph.get(finding.paragraph.index, 0) + 1
+                    per_rule[finding.rule_id] = per_rule.get(finding.rule_id, 0) + 1
+                    added += 1
 
     # Rhetorical coverage: if we have room and nothing rhetorical was chosen,
     # promote the strongest rhetorical finding even at the cost of mechanics.

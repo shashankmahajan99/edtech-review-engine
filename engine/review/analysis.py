@@ -588,6 +588,8 @@ def thesis_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
 
 def body_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
     out: list[Finding] = []
+    sourced = sum(1 for b in blocks if _citation_spans(b.text) or _STAT_RE.search(b.text))
+    essay_has_sources = sourced >= 2
 
     for bi, block in enumerate(blocks):
         sentences = block.sentences()
@@ -763,6 +765,72 @@ def body_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
                 if mapped:
                     out.append(Finding("comma_splice", PUNCT, *mapped, {}, 54))
                 break
+
+        # --- paragraph coverage: claim without support ---------------------
+        words = len(block.text.split())
+
+        # --- paragraph coverage: filler repetition -------------------------
+        if words >= 45:
+            filler = {"very": 0, "really": 0, "also": 0, "many": 0, "things": 0,
+                      "important": 0, "different": 0, "various": 0, "a lot": 0}
+            for term in filler:
+                filler[term] = len(re.findall(rf"\b{re.escape(term)}\b", low))
+            term, count = max(filler.items(), key=lambda kv: kv[1])
+            if count >= 4:
+                m = re.search(rf"\b{re.escape(term)}\b", low)
+                mapped = block.span_in_paragraph(m.start(), m.end()) if m else None
+                if mapped:
+                    out.append(Finding("para_filler", CLARITY, *mapped,
+                                       {"term": term, "count": count}, 46))
+
+        # --- paragraph coverage: metronomic sentences ----------------------
+        if len(sentences) >= 4:
+            lengths = [len(s.words) for s in sentences]
+            mean_len = sum(lengths) / len(lengths)
+            var = sum((x - mean_len) ** 2 for x in lengths) / len(lengths)
+            if var ** 0.5 < 2.4 and 10 <= mean_len <= 26:
+                mapped = block.span_in_paragraph(sentences[0].start, sentences[0].end)
+                if mapped:
+                    out.append(Finding("para_monotone", CLARITY, *mapped,
+                                       {"mean": round(mean_len)}, 45))
+
+        # --- paragraph coverage: passive constructions ---------------------
+        if words >= 55:
+            passives = list(re.finditer(
+                r"\b(?:is|are|was|were|be|been|being)\s+[a-z]+(?:ed|en)\b", block.text, re.I))
+            if len(passives) >= 2:
+                mapped = block.span_in_paragraph(passives[0].start(), passives[0].end())
+                if mapped:
+                    para, s, e = mapped
+                    s2, e2 = snippet_around(para.text, s, 80)
+                    out.append(Finding("para_passive", CLARITY, para, s2, e2,
+                                       {"count": len(passives)}, 47))
+
+        # --- paragraph coverage: opens without a claim ---------------------
+        if len(sentences) >= 4 and bi < len(blocks) - 1:
+            first_low = sentences[0].text.lower().strip()
+            starts_with_transition = any(
+                first_low.startswith(t + " ") or first_low.startswith(t + ",")
+                for t in _TRANSITIONS
+            )
+            if not starts_with_transition and not _MODAL_CLAIM.search(first_low) \
+                    and not _has_any(first_low, _CLAIM_MARKERS):
+                mapped = block.span_in_paragraph(sentences[0].start, sentences[0].end)
+                if mapped:
+                    out.append(Finding("para_no_claim", TOPIC, *mapped, {}, 49))
+
+        if (essay_has_sources and bi < len(blocks) - 1 and words >= 55
+                and not _citation_spans(block.text) and not _STAT_RE.search(block.text)):
+            mapped = block.span_in_paragraph(sentences[0].start, sentences[0].end)
+            if mapped:
+                out.append(Finding("para_unsupported", EVIDENCE, *mapped, {}, 50))
+
+        # --- paragraph coverage: opening claim abandoned by the close ------
+        if (bi < len(blocks) - 1 and words >= 70 and len(sentences) >= 4
+                and _jaccard(sentences[0].text, sentences[-1].text) < 0.06):
+            mapped = block.span_in_paragraph(sentences[0].start, sentences[0].end)
+            if mapped:
+                out.append(Finding("para_drift", ORGANISATION, *mapped, {}, 48))
 
     return out
 

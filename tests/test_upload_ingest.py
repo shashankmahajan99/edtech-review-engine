@@ -154,5 +154,24 @@ class TestStudioPdfRoute(unittest.TestCase):
         self.assertIn("80 words", response.json()["detail"])
 
 
+class TestStudioPage(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from fastapi.testclient import TestClient
+        from portal.server import app
+
+        cls.client = TestClient(app)
+
+    def test_page_has_single_flow_and_all_downloads(self):
+        page = self.client.get("/thinkingstorm")
+        self.assertEqual(page.status_code, 200)
+        html = page.text
+        for needle in ("Run complete review", "Commented .docx",
+                       "Tracked changes .docx", "Report .html",
+                       "custom_comments_text", "fileInput"):
+            self.assertIn(needle, html)
+        self.assertNotIn("loadSample", html)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

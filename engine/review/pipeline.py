@@ -61,6 +61,7 @@ def review_document(
     academic_style: str = "auto",
     allow_existing_comments: bool = False,
     overwrite: bool = False,
+    comprehensive: bool = True,
 ) -> ReviewResult:
     started = time.time()
     src = Path(input_path)
@@ -81,7 +82,7 @@ def review_document(
         raise PipelineError(f"{src.name} is too short to review ({model.word_count} words)")
 
     result = analyze(model)
-    selected = select_comments(model, result)
+    selected = select_comments(model, result, comprehensive=comprehensive)
 
     # Only keep findings whose span can actually be anchored.
     paragraph_by_index = {p.index: p for p in model.paragraphs}

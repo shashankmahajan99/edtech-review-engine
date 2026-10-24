@@ -287,6 +287,42 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
         ("Signposting the conclusion is unnecessary in an essay this short.",
          "Remove the marker and end on the substance."),
     ],
+    "para_unsupported": [
+        ("This paragraph makes its case without a source, while the rest of the draft is evidenced.",
+         "Add the study, statistic, or quotation that supports the claim."),
+        ("The claim here is asserted rather than shown.",
+         "Bring in one source that would let a sceptical reader accept it."),
+    ],
+    "para_drift": [
+        ("The paragraph opens on one claim and closes somewhere else.",
+         "Return to the opening claim in the final sentence so the paragraph reads as one unit."),
+        ("The idea announced in the first sentence is not picked up again by the end.",
+         "Close the loop before moving to the next paragraph."),
+    ],
+    "para_filler": [
+        ("\u201c{term}\u201d appears {count} times in this paragraph.",
+         "Replace the repetition with the specific detail each sentence needs."),
+        ("The paragraph leans on \u201c{term}\u201d {count} times.",
+         "Cut the filler and let the nouns and verbs carry the meaning."),
+    ],
+    "para_monotone": [
+        ("Every sentence in this paragraph runs about {mean} words.",
+         "Put one short sentence beside a longer one so the important point lands."),
+        ("The sentences here are metronomic in length.",
+         "Vary the rhythm: a brief statement after a long one reads as emphasis."),
+    ],
+    "para_passive": [
+        ("There are {count} passive constructions in this paragraph.",
+         "Name the actor and use an active verb where the actor matters."),
+        ("The paragraph hides its actors behind passive verbs.",
+         "Convert at least one of them so the sentence says who does what."),
+    ],
+    "para_no_claim": [
+        ("The paragraph opens with a fact rather than a claim.",
+         "State the point the fact is meant to support, then present it."),
+        ("The first sentence reports rather than argues.",
+         "Turn it into a topic sentence that tells the reader what to conclude."),
+    ],
     "conclusion_summary": [
         ("The conclusion restates points that already appear in the body.",
          "What is the larger implication for readers, and how can you end on that instead?"),

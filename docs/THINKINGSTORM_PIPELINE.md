@@ -50,6 +50,16 @@ paragraphs.
 
 ## 3. Release gate (what must pass before a file is shipped)
 
+**Original file preserved.** The commented deliverable is the student's own
+package: every part except `document.xml`, `comments.xml`, `endnotes.xml`, the
+two relationships files, `styles.xml` and `[Content_Types].xml` is copied
+byte-for-byte, and every paragraph's text is verified identical to the input.
+The tracked-changes deliverable is edited in place: only `word/document.xml`
+changes, and only the target span is wrapped in `<w:del>` / `<w:ins>` — fonts,
+bold/italic runs, tables, images, headers and margins are untouched. Edits that
+cannot be isolated safely (they cross a hyperlink or a non-text element) are
+skipped instead of guessed at.
+
 Structural
 - opens with `python-docx`; all parts present (`comments.xml`, `endnotes.xml`,
   comments rels, content types);
@@ -216,27 +226,42 @@ no module imports a network or LLM client.
 
 **Both website routes use this engine.** There is no second review path.
 
-`/api/thinkingstorm/execute` (the Reviewer Studio) runs this pipeline in
-automatic mode:
+The Studio (`/thinkingstorm`) is a single screen: add a `.docx`/`.pdf`/`.txt` or
+paste text, choose the style, run the review, then download:
 
-- upload / text → `<job_id>_<original stem>_commented.docx` on disk, served by
-  `/download/commented/{job_id}` under the original filename;
-- the JSON response carries the comments (`category`, `target_text`,
-  `comment_text`, `link_url`) and the three endnote domains for the view;
-- a manuscript the gate rejects returns **HTTP 422** with the concrete reason
-  instead of a silently degraded document;
-- if the reviewer typed custom comments or an endnote, the legacy exact-injection
-  path is used instead, because those are explicit human instructions.
+- **Commented .docx** — the original file with margin comments and the endnote;
+- **Tracked changes .docx** — the same original with mechanical edits as Word
+  revisions;
+- **Report .html** — rubric scores, priority actions and the summary;
+- **QA report .json** — every finding, the gate metrics and the endnote.
+
+Custom comments/endnotes live under an "Advanced" disclosure rather than a
+separate mode. The page surfaces the server's error text verbatim.
+
+`/api/thinkingstorm/execute` (the Reviewer Studio) returns the comments
+(`category`, `target_text`, `comment_text`, `link_url`, `paragraph`), the three
+endnote domains, the rubric, an executive summary, coverage counts, the QA report
+URL and a `warning` when a fallback was used.
 
 `/submit` (public intake) runs the same pipeline and produces all three
 artifacts from one analysis:
 
 - `_commented.docx` — the ThinkingStorm deliverable above (falls back to the
   legacy commenter only if the gate declines, e.g. a draft under 80 words);
-- `_annotated.docx` — tracked changes plus the 4-pillar rubric and the tutor
-  letter;
+- `_annotated.docx` — the original file with in-place tracked changes;
 - `_report.html` — executive summary, priority actions, pillar breakdown and
   line edits.
+
+Both docx downloads keep the student's formatting. The redline is not rebuilt
+from text any more; the report carries the rubric and the summary.
+
+### Full reviews
+
+The pipeline defaults to `comprehensive=True`: roughly one note per 55 words
+(cap 34), up to three notes on a substantial paragraph, and a coverage pass that
+ensures every body paragraph containing a detected issue receives a comment.
+`select_comments(..., comprehensive=False)` restores the lighter sampler for
+callers that want it.
 
 The rubric, the tracked changes and the report are computed by
 `engine/review/report.py` from the same findings that drive the comments, so the
