@@ -24,6 +24,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import pypdf
 from engine.processor import ReviewProcessor
+from engine.review.ingest import pdf_text_to_paragraphs, plain_text_to_paragraphs
 from engine.openxml_track_changes import WordTrackChangesEngine
 from engine.thinkingstorm_engine import (
     ThinkingStormAutomator,
@@ -1372,21 +1373,25 @@ async def submit_manuscript(
     if file and file.filename:
         file_stem = Path(file.filename).stem
         bytes_data = await file.read()
+        suffix = Path(file.filename).suffix.lower()
         try:
-            if file.filename.endswith(".docx"):
+            if suffix == ".docx":
                 doc = docx.Document(io.BytesIO(bytes_data))
                 raw_c = "\n\n".join([p.text for p in doc.paragraphs if p.text.strip()])
                 content = normalize_extracted_text(raw_c)
-            elif file.filename.endswith(".pdf"):
+            elif suffix == ".pdf":
                 reader = pypdf.PdfReader(io.BytesIO(bytes_data))
-                extracted_pages = [p.extract_text() or "" for p in reader.pages if p.extract_text()]
-                raw_c = "\n\n".join(extracted_pages)
-                content = normalize_extracted_text(raw_c)
+                pages = [p.extract_text() or "" for p in reader.pages]
+                content = "\n\n".join(
+                    pdf_text_to_paragraphs(page) for page in pages if page.strip()
+                )
             else:
                 raw_c = bytes_data.decode("utf-8", errors="ignore")
-                content = normalize_extracted_text(raw_c)
+                content = plain_text_to_paragraphs(raw_c)
         except Exception as e:
             return HTMLResponse(f"<h3>Error: Could not parse document '{file.filename}'. Please verify the file is a valid .docx or .pdf document.</h3>", status_code=400)
+    else:
+        content = plain_text_to_paragraphs(content)
 
     if not content:
         return HTMLResponse("<h3>Error: No text or document provided.</h3>", status_code=400)
@@ -1607,19 +1612,60 @@ async def execute_thinkingstorm_pipeline(
     job_id = f"ts-{uuid.uuid4().hex[:6]}"
     content = text.strip()
 
-    # Determine original filename stem
+    # Determine original filename stem and extract readable text
     original_stem = "manuscript"
     bytes_data = None
     if file and file.filename:
         original_stem = Path(file.filename).stem
         bytes_data = await file.read()
-        if file.filename.endswith(".docx"):
-            doc_in = docx.Document(io.BytesIO(bytes_data))
-            content = "\n\n".join([p.text for p in doc_in.paragraphs if p.text.strip()])
+        suffix = Path(file.filename).suffix.lower()
+        if suffix == ".docx":
+            try:
+                doc_in = docx.Document(io.BytesIO(bytes_data))
+                content = normalize_extracted_text(
+                    "\n\n".join([p.text for p in doc_in.paragraphs if p.text.strip()])
+                )
+            except Exception:
+                raise HTTPException(
+                    status_code=400,
+                    detail="This .docx could not be opened. Re-save it in Word and upload again.",
+                )
+        elif suffix == ".pdf":
+            try:
+                reader = pypdf.PdfReader(io.BytesIO(bytes_data))
+                pages = [(page.extract_text() or "") for page in reader.pages]
+                content = "\n\n".join(
+                    pdf_text_to_paragraphs(page) for page in pages if page.strip()
+                )
+            except Exception:
+                raise HTTPException(
+                    status_code=400,
+                    detail="This PDF could not be read. Export it as .docx, or paste the text into the box.",
+                )
+            if len(content.split()) < 40:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "No selectable text was found in this PDF (it may be a scan). "
+                        "Export the document as .docx, or paste the text into the box."
+                    ),
+                )
+        elif suffix in {".txt", ".md", ""}:
+            content = plain_text_to_paragraphs(bytes_data.decode("utf-8", errors="ignore"))
+        elif suffix == ".doc":
+            raise HTTPException(
+                status_code=400,
+                detail="Legacy .doc files are not supported. Save the file as .docx and upload again.",
+            )
         else:
-            content = bytes_data.decode("utf-8", errors="ignore")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type '{suffix}'. Upload .docx, .pdf, or .txt.",
+            )
+    else:
+        content = plain_text_to_paragraphs(content)
 
-    content = normalize_extracted_text(content)
+    content = content.strip()
     if not content:
         raise HTTPException(status_code=400, detail="No manuscript text provided.")
 
@@ -1627,7 +1673,7 @@ async def execute_thinkingstorm_pipeline(
 
     # 2. Create raw base docx
     base_docx_p = OUTPUT_DIR / f"{job_id}_raw.docx"
-    if bytes_data and file and file.filename.endswith(".docx"):
+    if bytes_data and file and file.filename and file.filename.lower().endswith(".docx"):
         base_docx_p.write_bytes(bytes_data)
     else:
         raw_doc = docx.Document()
@@ -1641,6 +1687,7 @@ async def execute_thinkingstorm_pipeline(
     commented_path = OUTPUT_DIR / commented_filename
 
     manual_mode = bool(custom_comments_text.strip() or custom_endnote_text.strip())
+    pipeline_warning = ""
     if manual_mode:
         # Reviewer-supplied comments/endnote keep the legacy exact-injection path.
         automator = ThinkingStormAutomator(reviewer_name=reviewer_name, initials=reviewer_initials)
@@ -1677,6 +1724,17 @@ async def execute_thinkingstorm_pipeline(
         from engine.review.links import link_for
         from engine.review.pipeline import PipelineError, review_document
 
+        if word_count < 80:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"This draft is only {word_count} words. The review needs at least 80 words "
+                    "of readable text — if this came from a PDF, export it as .docx or paste the text."
+                ),
+            )
+
+        ts_result = None
+        pipeline_warning = ""
         try:
             ts_result = review_document(
                 str(base_docx_p),
@@ -1689,30 +1747,44 @@ async def execute_thinkingstorm_pipeline(
                 overwrite=True,
             )
         except PipelineError as exc:
-            raise HTTPException(status_code=422, detail=f"Review pipeline rejected this manuscript: {exc}")
+            # A readable manuscript should never dead-end on a validation refusal:
+            # fall back to the direct commenter and report what happened.
+            pipeline_warning = str(exc)
 
-        if Path(ts_result.output_path) != commented_path:
-            Path(ts_result.output_path).replace(commented_path)
+        if ts_result is not None:
+            if Path(ts_result.output_path) != commented_path:
+                Path(ts_result.output_path).replace(commented_path)
 
-        comments = [
-            {
-                "target_text": c["quote"],
-                "category": c["category"] or "FEEDBACK",
-                "comment_text": c["body"],
-                "link_url": link_for(c["category"]) if c["category"] else "",
-            }
-            for c in ts_result.comments
-        ]
-        domains = {}
-        endnote_paras = ts_result.endnote
-        idx = 2
-        while idx < len(endnote_paras):
-            line = endnote_paras[idx]
-            if line.endswith(":") and idx + 1 < len(endnote_paras):
-                domains[line.rstrip(":")] = endnote_paras[idx + 1]
-                idx += 2
-            else:
-                idx += 1
+            comments = [
+                {
+                    "target_text": c["quote"],
+                    "category": c["category"] or "FEEDBACK",
+                    "comment_text": c["body"],
+                    "link_url": link_for(c["category"]) if c["category"] else "",
+                }
+                for c in ts_result.comments
+            ]
+            domains = {}
+            endnote_paras = ts_result.endnote
+            idx = 2
+            while idx < len(endnote_paras):
+                line = endnote_paras[idx]
+                if line.endswith(":") and idx + 1 < len(endnote_paras):
+                    domains[line.rstrip(":")] = endnote_paras[idx + 1]
+                    idx += 2
+                else:
+                    idx += 1
+        else:
+            automator = ThinkingStormAutomator(reviewer_name=reviewer_name,
+                                               initials=reviewer_initials)
+            comments, domains = automator.analyze_manuscript(content, student_name=student_name)
+            automator.generate_reviewed_docx(
+                input_docx=str(base_docx_p),
+                output_docx=str(commented_path),
+                student_name=student_name,
+                custom_comments=comments,
+                custom_domains=domains,
+            )
 
     # 4. Deterministic rubric + redline (no model call; derived from the same findings)
     annotated_filename = f"{job_id}_annotated.docx"
@@ -1777,7 +1849,8 @@ async def execute_thinkingstorm_pipeline(
         "commented_docx_url": f"/download/commented/{job_id}",
         "annotated_docx_url": f"/download/docx/{job_id}",
         "report_url": f"/download/report/{job_id}",
-        "status": "success"
+        "status": "success",
+        "warning": pipeline_warning,
     }
 
 

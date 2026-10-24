@@ -144,7 +144,7 @@ def get_thinkingstorm_studio_html(current_user=None):
                         <div class="border-2 border-dashed border-slate-700 hover:border-purple-500/60 rounded-2xl p-4 text-center cursor-pointer transition bg-slate-950/40" onclick="document.getElementById('fileInput').click()">
                             <input type="file" id="fileInput" accept=".docx,.pdf,.txt" class="hidden" onchange="handleFileUpload(event)">
                             <div class="text-xl mb-1">📁</div>
-                            <div class="text-xs font-semibold text-purple-300" id="uploadStatusText">Click to upload .docx manuscript</div>
+                            <div class="text-xs font-semibold text-purple-300" id="uploadStatusText">Click to upload .docx, .pdf or .txt</div>
                             <p class="text-[10px] text-slate-500 mt-0.5">Anchors comments directly into native Word XML</p>
                         </div>
 
@@ -421,7 +421,16 @@ Raunak Banga`;
                 }});
 
                 if (!resp.ok) {{
-                    throw new Error("Pipeline execution failed: " + resp.statusText);
+                    let reason = resp.statusText || ("HTTP " + resp.status);
+                    try {{
+                        const payload = await resp.json();
+                        if (payload && payload.detail) {{
+                            reason = (typeof payload.detail === "string")
+                                ? payload.detail
+                                : JSON.stringify(payload.detail);
+                        }}
+                    }} catch (ignored) {{}}
+                    throw new Error(reason);
                 }}
 
                 const data = await resp.json();

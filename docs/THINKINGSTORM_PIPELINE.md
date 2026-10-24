@@ -251,6 +251,22 @@ verdicts name the specific issue that was detected.
 rubric. Nothing in the website requires a key, a network connection, or a token
 budget.
 
+### Accepted inputs
+
+| Input | Handling |
+| --- | --- |
+| `.docx` | native comments and anchors on the real document; tracked changes are written from the analysed text |
+| `.pdf` | text layer extracted with `pypdf`, then rebuilt into front matter + body paragraphs (`engine/review/ingest.py`) before review |
+| `.txt` / pasted text | blank lines respected; otherwise sentences are regrouped into paragraphs |
+| scanned PDF (no text layer) | **HTTP 400** with "No selectable text was found…", not a 422 |
+| legacy `.doc` | **HTTP 400** asking for `.docx` |
+| under 80 words | **HTTP 400** naming the word count |
+
+If the release gate declines a readable manuscript, the Studio falls back to the
+direct commenter and returns `warning` in the JSON instead of an error, so a
+valid draft never dead-ends. The page shows the server's `detail` message rather
+than a bare "Unprocessable Entity".
+
 ---
 
 ## 10. Adding a rule
