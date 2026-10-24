@@ -72,6 +72,8 @@ Requirements:
   explicitly tied to the measured distribution below.
 - Keep the constraints: the corpus uses **no contractions**, rare first person,
   46% one-sentence comments, and hedges in 39% of comments.
+- `endnote_template` must reproduce the structure and length of the letters below
+  (138–382 words): an opening line, two or three named focus areas, and a sign-off.
 - No generic praise, no sentence-length uniformity, no throat-clearing.
 - Return only the JSON in a fenced ```json block, no commentary.
 
@@ -234,56 +236,487 @@ Requirements:
 
 ## Human endnote letters
 
-### janeen_REV_BY_TS_RaunakB_243347_1.docx
+These are the closing letters the reviewers append to the draft: an opening
+line, two or three named focus areas, and a sign-off. They are the ground
+truth for `endnote_template`.
 
-Dear Janeen,
-Thank you for submitting your paper.
-There are some suggestions that may help improve the quality of the paper:
+### Mehak K. — 1stdraft_marcelo_aguirrerod10_COTA_2_REV_BY_TS_MehakK_245369_1.docx (210 words)
 
-Thesis and Main Argument:
-Your introduction discusses the financial problems of students, but your thesis could be tighter. You might want to ensure that you give your thesis a statement of your opinion while at the same time giving hints of your major supporting points, such as access to college, debts, and financial flexibility. This will help make it more straightforward for your audience to grasp the content of the unit.
+You have done a good job to establish perseverance and ambition as the central themes of your essay and maintain this focus throughout the discussion.
 
-Evidence and Analysis:
-You give a number of relevant research studies and statistics, especially in the part on enrolment issues and student debt but some paragraphs skip too quickly from one piece of evidence to the other. Once you present the results of some research study of interest, you need to elaborate more on what the data can prove or what particular claim of this paragraph is supported by it.
+There are a few areas to focus on your next draft. You could make the thesis statement more specific by explaining how each song approaches the three themes differently. Your thesis mentions that the songs present motivation, challenges, and success differently. How could you make this claim more specific by identifying what Eminem emphasizes and what Survivor emphasizes in these three areas? Could you briefly show these differences in one focused thesis statement so that readers know what your comparison will be about?
 
-Structure and Counterargument:
-The section on the drawbacks of free education introduces a crucial element to the essay. You may want to link this section to your position by elaborating on how these drawbacks either contradict your view or enhance
+For the next steps, your paragraph about challenges begins, “Another comparison is how the songs talk about challenges.” How could you revise this topic sentence to explain how the songs portray challenges differently? For example, could you introduce the contrast between the pressure of facing an important opportunity in “Lose Yourself” and the determination to keep fighting in “Eye of the Tiger”?
 
-I hope you find the feedback helpful.
-All the best.
-Raunak Banga
+This is a good start for your paper. I am looking forward to see how your paper would develop with these revisions. Best of luck, and feel free to reach out if you need any clarification!
 
-### andrea goblet.docx
+Best wishes,
 
-Dear Andrea,
-Thank you submitting your draft. Please pay attention to the following domains:
+Mehak K.
 
-Introduction and Assertion of Thesis: The introduction provides the information about the work and also offers the general outline of its aim to the readers. However, the core of rhetorical analysis is not expressed with great clarity at this moment. You may consider pointing out the rhetorical tactics in your work and their connection with each other.
+### Mehak K. — AnnotatedBibliography_jsmatheny982_wcc_3_REV_BY_TS_MehakK_245319_1.docx (292 words)
 
-Analysis and Evidence: The body of your work reveals several situations from Trimble’s life along with the emotional appeals and facts. Nevertheless, there is the need to explore the link between the rhetorical tactics and the examples provided in the body paragraphs. After providing an example, it is important for you to mention how the used example influences the audience and helps to prove the main idea of the paragraph.
+You have done a good job to discuss how artificial intelligence affects political polarization.
 
-Clarity and Proofreading: The draft contains numerous cases of spacing, punctuation and spelling mistakes that hamper the understanding of your thoughts. Hence there is a need to make the final proof-reading process more careful and thorough.
+There are a few areas to focus on your next draft. In your first annotation, you discuss the study's findings, the authors' credentials, and your observation that AI can be designed to reduce polarization. How could you organize this information into three parts: a summary of the study, an evaluation of its credibility and limitations, and an explanation of its relevance to your research?
 
-I hope you find the feedback useful.
-All the best.
-Raunak Banga
+In the relevance section, could you explain more specifically how this study will help you investigate whether AI reduces polarization under certain conditions or whether its effects depend on how the system is designed?
 
-### kiran mitra.docx
+You explain that Harrison's article is useful for gauging the political slant of AI, but the explanation of how it supports your research is brief. How could you expand the relevance section by explaining how the reported findings might help you investigate the relationship between political bias and polarization? Could you also evaluate the source's credibility by distinguishing Harrison's role as the article's author from the researchers who conducted the underlying study, and then explain any limitations you would consider before relying on its findings?
 
-Dear Kiran,
-Thank you for submitting in your paper. You need to focus on:
-Thesis and overall focus:
-Your introduction does a great job of describing the problem of antimicrobial resistance. However, your thesis is a little vague and does not clearly preview the direction of your essay. Since you only go into detail in three areas, I suggest you broaden your thesis statement to include each of those three areas in your approach. This will help to clarify the focus of your paper for the reader.
+For the next steps, please use sentence case for the title of articles and ensure all entries are formatted using hanging indentation. This will help the entries align with the APA guidelines. There is a sample of the annotation I am providing for you to refer to and ensure to follow this for your annotations.
 
-Evidence and analysis:
-You have described the stewardship-program study, the ozone-treatment study, and bacteriophage research. However, in some places, it seems like you are jump from these results to other ideas without giving the reader a bit of time to understand the implications and meaning of these results. When you do present some solid evidence, try to provide some analysis of what this means and how this leads to your main point in that paragraph. This will help to keep your paper at an analytical level instead of a more descriptive level.
+This is a good start for your paper. I am looking forward to see how your paper would develop with these revisions. Best of luck, and feel free to reach out if you need any clarification!
 
-Conclusion and synthesis:
-You mention the 3 approaches in your conclusion. However, you only restate the approaches but do not add anything further. Instead, maybe you could talk about how these 3 approaches need to be followed to effectively address antimicrobial resistance. I think this would help the reader come to with a strong conclusion about your main points and ideas.
+Best wishes,
 
-I hope this feedback is helpful.
-All the best.
-Raunak Banga
+Mehak K.
+
+### Mohini Sardar — AshleyJohnson_REV_BY_TS_MohiniS_245299_1.docx (219 words)
+
+Dear Ashley,
+
+You have done a decent job here with the annotated bibliography. However, there are a few areas where you need to work on in the next draft. Let us look at them in detail-
+
+Annotations-
+
+Your annotations are on the right track, but they could be developed in a bit more depth. Kindly follow a proper structure for your annotations to make it look more academic-Firstly, you need to introduce the article and state the main claims in a brief manner. You need to summarize the key points which you think are relevant to your research question. Secondly, you need to talk about the credibility of the source. Who is the author? What is it about their background that makes them a reliable source? Is the journal a reputable one? What are the reasons for its credibility? After delving into these, you need to end the annotation by mentioning how you will use the article in your paper. Where exactly will you place the citation in your paper? Think on these lines to develop the annotations further.
+
+I am sure that once you focus on these areas, your writing will look a lot more refined. I look forward to reading the revised draft. You have great potential. Keep writing. All the best!
+
+Regards,Mohini.
+
+Formatting the Reference List
+
+### Mehak K. — blank_document-2_william_holloway03_COTA_1_REV_BY_TS_MehakK_245315_1.docx (186 words)
+
+You have done a good job of sharing your Week One and Week Two reflections.
+
+There are a few areas to focus on your next draft. In the Week Two paragraph, you introduce the reported incident at Taliesin West, but you could provide more context about the news story and explain more clearly how it relates to the chapter. Could you briefly explain the relevant details of the incident and then add a sentence explaining why this connection matters to you?
+
+For the next steps, please revise for grammar issues such as in the sentence beginning “I saw another home he owns, Taliesin West,located in Scottsdale, Arizona…”, several ideas are combined without sufficient punctuation, and space after the comma is needed such as in “West,located.” How could you divide this sentence into two shorter sentences, use commas to set off the location correctly, and capitalize “Google”?
+
+This is a good start for your paper. I am looking forward to see how your paper would develop with these revisions. Best of luck, and feel free to reach out if you need any clarification!
+
+Best wishes,
+
+Mehak K.
+
+### Mehak K. — BrightlyBleak-Acomparisonessay-Rhoads_ana_rhoads81_COTA_2_REV_BY_TS_MehakK_245373_1.docx (225 words)
+
+You have done a good job to discuss in your comparative essay about “Bullet” by Hollywood Undead and “Nintendo 64” by Alex G. Your discussion explores a serious topic through the perspectives, imagery, and themes presented in both songs.
+
+There are a few areas to focus on your next draft. Some of your topic sentences could be reworked as they are a bit lengthy. You could consider explaining how the songs' different perspectives such as experiencing a crisis firsthand versus witnessing a loved one in crisis help communicate the impact of suicidal thoughts. Similarly, make sure each topic sentence identifies the specific comparison you will develop and connect it to one of the main points in your thesis.
+
+For the next steps, your Works Cited page needs attention to quotation marks, capitalization, and entry formatting. For example, the entry for Hollywood Undead currently appears as Hollywood Undead.”Bullet.”; the quotation marks and spacing could be corrected, and the entries should follow consistent MLA formatting. Can you also check that the names used in your parenthetical citations correspond to the first elements of the Works Cited entries?
+
+This is a good start for your paper. I am looking forward to see how your paper would develop with these revisions. Best of luck, and feel free to reach out if you need any clarification!
+
+Best wishes,
+
+Mehak K.
+
+### Mehak K. — ComparisonEssay_angel_lopezperez35_COTA_2_REV_BY_TS_MehakK_245370_1.docx (217 words)
+
+You have done a good job to discuss how the two songs “Tell Your Friends” by The Weeknd and “Human Nature” by Michael Jackson give you an opportunity to explore how different artists present personal freedom, human desires, and individual choices.
+
+There are a few areas to focus on your next draft. Your current introduction moves into the discussion of “Tell Your Friends” without clearly stating the main comparison you intend to develop. You could consider ending the introduction with a specific claim or thesis statement that mentions how the two artists explore self-expression through independence, personal freedom, and human instincts.
+
+For the next steps, the ideas could be slightly reorganized. At present, some ideas about The Weeknd's song, including personal growth and individual choices, appear across several sections, while the discussion of Jackson’s song is divided into multiple paragraphs. You could group related ideas together, begin a new paragraph when the focus changes, and use transitions to connect the two songs. This will ensure each idea about the song is discussed in its own separate paragraph.
+
+This is a good start for your paper. I am looking forward to see how your paper would develop with these revisions. Best of luck, and feel free to reach out if you need any clarification!
+
+Best wishes,
+
+Mehak K.
+
+### Mehak K. — ComparisonEssay_reece_feyer31_COTA_2_REV_BY_TS_MehakK_245367_1.docx (223 words)
+
+You have done a good job to write a comparative essay about Aretha Franklin’s and P!nk’s songs and their shared message about respect.
+
+There are a few areas to focus on your next draft. Your current thesis statement is fragmented across several lines. You could combine the ideas into one focused thesis that names the main points you will compare, such as self-respect, standing up for oneself, and supporting others. In your thesis, you could express a complete claim and show how the artists communicate these themes through their lyrics and musical approaches.
+
+For the next steps, please review your essay for sentence fragments, capitalization, word choice, and punctuation. Also, avoid capitalizing “She” in the middle of a sentence when it does not begin a new sentence, and use consistent hyphenation in compound words such as “self-respect” and “self-confidence.”
+
+To comply with the MLA guidelines, you could add in-text citations after quoted lyrics, using the artist's last name or the shortened title that corresponds to the Works Cited entry. Since lyrics are quoted from recorded songs, timestamps may help readers locate the passages.
+
+This is a good start for your paper. I am looking forward to see how your paper would develop with these revisions. Best of luck, and feel free to reach out if you need any clarification!
+
+Best wishes,
+
+Mehak K.
+
+### Mehak K. — ComparisonEssay_tannya_chaconbaez79_COTA_2_REV_BY_TS_MehakK_245379_1.docx (271 words)
+
+You have done a good job to establish a meaningful comparison between the two songs by examining discrimination, emotional suffering, and hope for social change.
+
+There are a few areas to focus on your next draft. Your thesis statement identifies institutionalized discrimination, emotional suffering, and hope for social progress as the main points of comparison.
+
+However, you could make the central claim more precise by naming both songs directly in the concluding sentence of your introduction and explaining how each song communicates these themes differently.
+
+For example, how does Cooke’s song reflect the experiences of African Americans during the civil rights era, while “Same Love” addresses prejudice against the LGBTQ+ community?
+
+For the next steps, you could also develop some of your supporting explanations further to enhance the idea development. When you discuss the emotional harm caused by discrimination, you could explain more specifically how the lyrics reveal this suffering and why it matters to the song’s overall message?
+
+Could you develop this point with more specific analysis of the lyric about hip-hop being perceived as hostile toward gay people?
+
+What does this suggest about the influence of prejudice and derogatory comments on a person’s sense of belonging or self-esteem?
+
+Your Works Cited entries currently use bullet points and inconsistent punctuation. You could remove the bullets, arrange the entries alphabetically by the first element, italicize Genius, and apply a hanging indent.
+
+This is a good start for your paper. I am looking forward to see how your paper would develop with these revisions. Best of luck, and feel free to reach out if you need any clarification!
+
+Best wishes,
+
+Mehak K.
+
+### Mehak K. — ComparisonEssayDraft_william_boehmer21_COTA_2_REV_BY_TS_MehakK_245368_1.docx (192 words)
+
+You have done a good job to write a well-organized comparative essay exploring how “Eye of the Tiger” by Survivor and “The Champion” by Carrie Underwood featuring Ludacris communicate the meaning of competition.
+
+There are a few areas to focus on your next draft. To enhance the development of ideas, while you generally explain what the lyrics mean, you could take your analysis a step further by exploring why the artists chose those specific words, images, or expressions and how those choices strengthen the songs’ messages about competition. You could consider examining imagery, repetition, tone, or word choice rather than simply restating their meanings.
+
+For the next steps, your essay has a logical structure, but some transitions could make the relationship between your points clearer. Phrases such as “Beyond determination, both songs also emphasize the importance of learning from setbacks” or “Once competitors learn to overcome challenges, could establish this connection clearly.
+
+This is a good start for your paper. I am looking forward to see how your paper would develop with these revisions. Best of luck, and feel free to reach out if you need any clarification!
+
+Best wishes,
+
+Mehak K.
+
+### Mehak K. — comparisonessayroughdraft_fisher_parker52_COTA_3_REV_BY_TS_MehakK_245381_1.docx (194 words)
+
+You have done a good job to establish your comparison in this paper on deer hunting traditions in the United States and Germany.
+
+There are a few areas to focus on your next draft. Your thesis statement only mentions one area of difference. Since your essay also discusses traditions and hunting methods, you could consider including these aspects in your thesis.
+
+What specific differences do you want readers to understand about hunting in the two countries?
+
+For the next steps, to enhance the idea development, in the paragraph about hunting laws and requirements, you explain that German hunters must complete more training and pass an examination. What does this difference suggest about the responsibilities expected of hunters in Germany compared with those in the United States?
+
+Similarly, when discussing hunting methods, how could you explain the significance of the research finding about “sustained and intensive hunting pressure” rather than simply restating what it means?
+
+This is a good start for your paper. I am looking forward to see how your paper would develop with these revisions. Best of luck, and feel free to reach out if you need any clarification!
+
+Best wishes,
+
+Mehak K.
+
+### Mehak K. — CompletedDraft_diego_cantos78_COTA_2_REV_BY_TS_MehakK_245376_1.docx (253 words)
+
+You have done a good job to establish the differences between the two songs, explaining how “Hall of Fame” emphasizes personal achievement while “You’re the Voice” encourages people to speak up and contribute to social change.
+
+There are a few areas to focus on your next draft. Your thesis identifies hard work, personal discipline, and overcoming problems as shared themes, but it could explain more clearly how the two songs communicate these ideas differently.
+
+How is personal determination emphasized in “Hall of Fame” and the collective responsibility emphasized in “You’re the Voice”?
+
+How does “Hall of Fame” encourage individual achievement while “You’re the Voice” emphasizes speaking up and contributing to society?
+
+For the next steps, please revise your topic sentences so that they introduce the main idea you will discuss from the two songs in that particular body paragraph. For example, in the topic sentence “Working toward a goal can be difficult, especially when results take time” introduces a general idea but it could explain how both songs develop it.
+
+How could you revise this opening to show what the paragraph will compare in the two songs?
+
+For example, could you explain how “Hall of Fame” connects perseverance with consistent effort, while “You’re the Voice” connects responsibility with the courage to speak out?
+
+This is a good start for your paper. I am looking forward to see how your paper would develop with these revisions. Best of luck, and feel free to reach out if you need any clarification!
+
+Best wishes,
+
+Mehak K.
+
+### Mohini Sardar — DarlinOsornioSilva_REV_BY_TS_MohiniS_245332_1.docx (220 words)
+
+Dear Darlin,
+
+You have done a pretty good job here with the annotated bibliography. However, there are a few areas where you need to work on in the next draft. Let us look at them in detail-
+
+Annotations-
+
+Your annotations are on the right track, but they could be developed in a bit more depth. Kindly follow a proper structure for your annotations to make it look more academic-Firstly, you need to introduce the article and state the main claims in a brief manner. You need to summarize the key points which you think are relevant to your research question. Secondly, you need to talk about the credibility of the source. Who is the author? What is it about their background that makes them a reliable source? Is the journal a reputable one? What are the reasons for its credibility? After delving into these, you need to end the annotation by mentioning how you will use the article in your paper. Where exactly will you place the citation in your paper? Think on these lines to develop the annotations further.
+
+I am sure that once you focus on these areas, your writing will look a lot more refined. I look forward to reading the revised draft. You have great potential. Keep writing. All the best!
+
+Regards,Mohini.
+
+Formatting the Reference List
+
+### Mohini Sardar — DevonHarrold_REV_BY_TS_MohiniS_245338_1.docx (334 words)
+
+Dear Devon,You have done a decent job here with the annotated bibliography. However, there are a few areas where you need to work on in the next draft. Let us look at them in detail-APA Formatting –
+
+The paper currently is not formatted as per APA, which makes it look a little informal. You need to provide a title page before the paper which will include the title of the paper in bold, along with your name, the name of the college, the course name, instructor’s name and the date. The title details need to be centered, and should be placed in the middle of the page. Also, the date is to be written in the month-date-year format.For example, September 6, 2026These details need to be aligned to the center. Further, a running header needs to be inserted in the top right corner of the page, and it should include only the page number.
+
+Annotations-
+
+You have a good start with the annotations, but they need to be developed further. Kindly follow a proper structure for your annotations to make it look more academic-Firstly, you need to introduce the article and state the main claims in a brief manner. You need to summarize the key points which you think are relevant to your research question. Secondly, you need to talk about the credibility of the source. Who is the author? What is it about their background that makes them a reliable source? Is the journal a reputable one? What are the reasons for its credibility? After delving into these, you need to end the annotation by mentioning how you will use the article in your paper. Where exactly will you place the citation in your paper? Think on these lines to develop the annotations further.I am sure that once you focus on these areas, your writing will look a lot more refined. I look forward to reading the revised draft. You have great potential. Keep writing. All the best!
+
+Regards,Mohini.
+
+Formatting the Reference List
+
+### Mohini Sardar — ErinCrede_REV_BY_TS_MohiniS_245354_1.docx (294 words)
+
+Dear Erin,
+
+You have done a pretty good job here with the essay. However, there are a few areas where you
+
+need to work on in the next draft. Let us look at them in detail-
+
+Thesis Statement- The thesis statement in the paper could be framed in a more analytical way.Let us look at how you can work on it with the help of an example-
+
+Remember, a thesis statement has two parts- one is the claim and the other is the justification.
+
+You need to keep these in mind when you frame the thesis statement here. For example, let us
+
+assume the claim as- “In her United Nations speech, Malala Yousafzai effectively persuades her
+
+audience to support equal access to education.” This claim needs to be accompanied by a
+
+justification like “by using ethos to establish her credibility as an education activist, pathos to
+
+highlight the emotional consequences of educational inequality, and logos to demonstrate the
+
+importance of education for social progress.”
+
+When you combine the two statements, you get the thesis statement. Try to come up with a thesis
+
+statement keeping this in mind. It needs to be of an optimum length for the reader, and is usually
+
+written in the last line of the introduction.
+
+What is your main argument about the article by Jordan Weissmann? Which rhetorical devices
+
+are used in it to persuade the audience about the intended message? What is the purpose of using
+
+them?
+
+Think about these leading questions and frame an assertive thesis statement in a succinct manner.
+
+I am sure that once you focus on these areas, your writing will look a lot more refined. I look
+
+forward to reading the revised draft. You have great potential. Keep writing. All the best!
+
+Regards,
+
+Mohini.
+
+### Mehak K. — essaydraft_GDubeLTI_QCC_1_REV_BY_TS_MehakK_245306_1.docx (219 words)
+
+You have done a good job to discuss the potential harms of bonding with AI.
+
+There are a few areas to focus on your next draft. You could revise each topic sentence to present the paragraph’s main claim and show how it supports your thesis. For example, your second body paragraph begins, “Another reason bonding with AI can be harmful is that people can become too dependent on it.” How could you make this topic sentence more specific by explaining how emotional dependence on AI might affect a person’s willingness to seek support from friends or family?
+
+For the next steps, your examples explain what might happen when someone relies heavily on AI, but most of the discussion is based on hypothetical situations. What credible research study, expert article, or report could you use to support one of your claims about AI companionship, emotional dependence, or human relationships?
+
+Where would you place that evidence in the relevant paragraph, how would you introduce and cite it, and what explanation could you add afterward to show how it supports your argument?
+
+This is a good start for your paper. I am looking forward to see how your paper would develop with these revisions. Best of luck, and feel free to reach out if you need any clarification!
+
+Best wishes,
+
+Mehak K.
+
+### Mohini Sardar — GavinWoodruff_REV_BY_TS_MohiniS_245290_1.docx (257 words)
+
+Dear Gavin,
+
+You have done a pretty good job here with the report. However, there are a few areas where you need to work on in the next draft. Let us look at them in detail-
+
+Thesis Statement-
+
+The thesis statement in the paper could be framed in a more precise way. Let us look at how you can work on it with the help of an example-
+
+Remember, a thesis statement has two parts- one is the claim and the other is the justification. You need to keep these in mind when you frame the thesis statement here. For example, let us assume the claim as- “Public colleges should offer free tuition.” This claim needs to be accompanied by a justification like “because it would increase access to higher education, reduce student debt, and strengthen the workforce.”
+
+When you combine the two statements, you get the thesis statement. Try to come up with a thesis statement keeping this in mind. It needs to be of an optimum length for the reader, and is usually written in the last line of the introduction.
+
+What is your main argument about corded power tools at the workplace? Why should it be changed to a completely cordless platform?
+
+Think about these leading questions and frame an assertive thesis statement in a succinct manner.
+
+I am sure that once you focus on these areas, your writing will look a lot more refined. I look forward to reading the revised draft. You have great potential. Keep writing. All the best!
+
+Regards,
+
+Mohini.
+
+### Mehak K. — IndependenceEssayDraft_leland_serrant83_COTA_2_REV_BY_TS_MehakK_245403_1.docx (266 words)
+
+You have done a good job to establish a clear central theme of independence and identify three areas through which the songs explore it such as prioritizing personal needs, pursuing a good life, and escaping unpleasant situations.
+
+There are a few areas to focus on your next draft. The thesis statement could be revised and made more concise. In one sentence at the end of the introduction, you could name the songs and show what are the main ideas you will discuss from them.
+
+Will your comparison bring out the differences or similarities in the thematic discussion and how?
+
+Your thesis identifies prioritizing, having a good life, and escaping unpleasant things as three aspects of independence. How could you express these ideas in one concise sentence that also explains how the two songs approach independence differently?
+
+What specific contrast between the speakers’ attitudes or choices would make your central argument more analytical?
+
+For the next steps, some of your topic sentences are a bit general. You could introduce the main idea you will discuss in the body paragraph more clearly in the topic sentence. For example, you could state more directly how the songs portray different ways of escaping difficulties. For example, how does prioritizing personal needs lead into the pursuit of a more fulfilling life, and how might escaping difficulties represent another aspect of independence?
+
+This is a good start for your paper. I am looking forward to see how your paper would develop with these revisions. Best of luck, and feel free to reach out if you need any clarification!
+
+Best wishes,
+
+Mehak K.
+
+### Mohini Sardar — JacobLeite_REV_BY_TS_MohiniS_245301_1.docx (250 words)
+
+Dear Jacob,
+
+You have done a pretty good job here with the essay. However, there are a few areas where you need to work on in the next draft. Let us look at them in detail-
+
+Thesis Statement-
+
+The thesis statement in the paper could be framed in a more concise way. Let us look at how you can work on it with the help of an example.
+
+Remember, a thesis statement has two parts- one is the claim and the other is the justification. You need to keep these in mind when you frame the thesis statement here. For example, let us assume the claim as- “Public colleges should offer free tuition.” This claim needs to be accompanied by a justification like “because it would increase access to higher education, reduce student debt, and strengthen the workforce.”
+
+When you combine the two statements, you get the thesis statement. Try to come up with a thesis statement keeping this in mind. It needs to be of an optimum length for the reader, and is usually written in the last line of the introduction.
+
+What is your main argument about AI? Why should it be regulated by the government?
+
+Think about these leading questions and frame an assertive thesis statement in a succinct manner.
+
+I am sure that once you focus on these areas, your writing will look a lot more refined. I look forward to reading the revised draft. You have great potential. Keep writing. All the best!
+
+Regards,
+
+Mohini.
+
+### Mehak K. — McAvey_Essay1_RoughDraft_AMcAveyLTI_QCC_1_REV_BY_TS_MehakK_245303_1.docx (203 words)
+
+You have done a good job to develop your argument about the need to regulate artificial intelligence. I like how your essay considers how AI affects employment, critical thinking, the environment, and human relationships.
+
+There are a few areas to focus on your next draft. Some of your topic sentences at the start of the body paragraphs could be reworked. You could avoid beginning the topic sentence with an outside quote. In your own words you could introduce whether you will discuss a benefit or drawback of using AI and then add evidence in the upcoming sentences.
+
+For the next steps, please create a separate Works Cited page at the end of your essay. The title of articles is written in title case, while the name of journals and sources is to be written in italics. All entries are to be arranged alphabetically and formatted using hanging indentation. MLA in-text citation could include the author’s last name and page number as (Smith 22).
+
+This is a good start for your paper. I am looking forward to see how your paper would develop with these revisions. Best of luck, and feel free to reach out if you need any clarification!
+
+Best wishes,
+
+Mehak K.
+
+### Mohini Sardar — MohammadTawfiqBidaki_REV_BY_TS_MohiniS_245308_1.docx (254 words)
+
+Dear Mohammad,
+
+You have done a pretty good job here with the essay outline. However, there are a few areas where you need to work on in the next draft. Let us look at them in detail-
+
+Thesis Statement-
+
+The thesis statement in the paper could be framed in a more analytical way. Let us look at how you can work on it with the help of an example.
+
+Remember, a thesis statement has two parts- one is the claim and the other is the justification. You need to keep these in mind when you frame the thesis statement here. For example, let us assume the claim as- “Public colleges should offer free tuition.” This claim needs to be accompanied by a justification like “because it would increase access to higher education, reduce student debt, and strengthen the workforce.”
+
+When you combine the two statements, you get the thesis statement. Try to come up with a thesis statement keeping this in mind. It needs to be of an optimum length for the reader, and is usually written in the last line of the introduction.
+
+What is your main argument about AI? How exactly is it useful? How can it harm human relationships?
+
+Think about these leading questions and frame an assertive thesis statement in a succinct manner.
+
+I am sure that once you focus on these areas, your writing will look a lot more refined. I look forward to reading the revised draft. You have great potential. Keep writing. All the best!
+
+Regards,
+
+Mohini.
+
+### Mehak K. — negativeaiessay_TCarusoLTI_QCC_1_REV_BY_TS_MehakK_245407_1.docx (231 words)
+
+You have done a good job to discuss a relevant topic of the influence of artificial intelligence on society.
+
+There are a few areas to focus on your next draft. You could add a more focused thesis statement at the end of the introduction, In the thesis, you could mention the main argument of the paper and show the key areas you will discuss. You could bring together your concerns about how AI is affecting human relationships, critical thinking, employment, and why is there a need for regulation.
+
+Will the focus of the essay be on discussing the benefits of AI, its drawbacks or both?
+
+How could you suggest ways to create a balance in the use of AI?
+
+For the next steps, some of your topic sentences are a bit general. To set a clear focus, please introduce the main idea about AI’s effect on people and society you intend to discuss in the body paragraph. also try to emphasize whether an idea will be discussed as a benefit, drawback or a recommendation so that the readers know how an idea will be discussed by you in the body paragraph.
+
+This is a good start for your paper. I am looking forward to see how your paper would develop with these revisions. Best of luck, and feel free to reach out if you need any clarification!
+
+Best wishes,
+
+Mehak K.
+
+### Mohini Sardar — NgocmaiChau_REV_BY_TS_MohiniS_245394_1.docx (382 words)
+
+Dear Ngocmai,
+
+You have done a pretty good job here with the report. However, there are a few areas where you need to work on in the next draft. Let us look at them in detail-
+
+APA Formatting –
+
+The paper currently is not formatted as per APA, which makes it look a little informal. You need to provide a title page before the paper which will include the title of the paper in bold, along with your name, the name of the college, the course name, instructor’s name and the date. The title details need to be centered, and should be placed in the middle of the page. Also, the date is to be written in the month-date-year format.For example, September 6, 2026These details need to be aligned to the center. Further, a running header needs to be inserted in the top right corner of the page, and it should include only the page number.
+
+Thesis Statement-
+
+As highlighted, the thesis statement in the paper could be framed in a precise manner to guide the discussion. Let us look at how you can work on it with the help of an example-
+
+Remember, a thesis statement has two parts- one is the claim and the other is the justification. You need to keep these in mind when you frame the thesis statement here. For example, let us assume the claim as- “Happiness is the ability to appreciate life with contentment and optimism.” This claim needs to be accompanied by a justification like “because it enables individuals to build healthy relationships, overcome challenges, and find meaning in everyday experiences.”
+
+When you combine the two statements, you get the thesis statement. Try to come up with a thesis statement keeping this in mind. It needs to be of an optimum length for the reader, and is usually written in the last line of the introduction.
+
+Which performance skills did you observe at Notre Dame? How were the findings relevant to you?
+
+Think about these leading questions and frame an assertive thesis statement in a succinct manner.
+
+I am sure that once you focus on these areas, your writing will look a lot more refined. I look forward to reading the revised draft. You have great potential. Keep writing. All the best!
+
+Regards,
+
+Mohini.
+
+### Mehak K. — OccupationalTherapyEvaluation-2-_nspape-utica.edu_UTICA_1_REV_BY_TS_MehakK_245386_1.docx (222 words)
+
+You have done a good job to share detailed observations and assessment findings that provide a useful foundation for understanding Eloise’s abilities, developmental challenges, and participation in everyday activities.
+
+There are a few areas to focus on your next draft. Your report includes several useful sections, but some paragraphs contain multiple ideas that could be organized more clearly. For example, the Occupational Analysis section moves from assessment scores to mental functions, sensory functions, motor abilities, and social interaction skills. Consider using clearer subheadings or separate paragraphs to separate these areas.
+
+For the next steps, you could add clear topic sentences to further enhance the organization of ideas. For this, you could begin each paragraph with a topic sentence that identifies its main focus, and then use the observations and assessment findings to support that point.
+
+You identify pretense/symbolic play as Eloise’s lowest-scoring domain, with an age equivalency of nine months, and mention that she imitated vocalizations and actions only a few times. How could you connect these specific observations to the assessment findings and explain their possible implications for her play participation?
+
+This is a good start for your paper. I am looking forward to see how your paper would develop with these revisions. Best of luck, and feel free to reach out if you need any clarification!
+
+Best wishes,
+
+Mehak K.
+
+### Mehak K. — Osteen1_n_osteen13_brcc_3_REV_BY_TS_MehakK_245300_1.docx (268 words)
+
+You have done a good job to discuss literary analysis of Ernest Hemingway’s “A Clean, Well-Lighted Place.” Your essay explores how loneliness and emptiness influence the characters and how the café provides them with a sense of comfort.
+
+There are a few areas to focus on your next draft. Please make your topic sentences more specific and ensure that each body paragraph has a clear focus. For example, in your second body paragraph you begin by saying, “The way Hemingway captured the characters in his writing.” This is an incomplete sentence because it conveys an incomplete thought. You could reframe it to clearly identify the point you want to make about characterization. How could it show the views of the two waiters on loneliness?
+
+For the next steps, please revise your paper for punctuation, capitalization, and word choice. For example, “well lite” should be “well-lit,” “empothy” should be “empathy,” and “presents” should be “presence” when referring to the older waiter’s understanding of the café’s importance.
+
+For MLA formatting, your heading should list your name, instructor's name, course, and date in that order, with each item on a separate line. The date should follow MLA style, such as 13 October 2026. Keep the first-line indentation of each body paragraph consistent at 0.5 inches. Finally, create a separate Works Cited page rather than leaving “Cited” followed by incomplete source information.
+
+This is a good start for your paper. I am looking forward to see how your paper would develop with these revisions. Best of luck, and feel free to reach out if you need any clarification!
+
+Best wishes,
+
+Mehak K.
+
+### Mohini Sardar — StellaHofler_REV_BY_TS_MohiniS_245362_1.docx (138 words)
+
+Dear Stella,
+
+You have done a pretty good job here with the essay. However, there are a few areas where you
+
+need to work on in the next draft. Let us look at them in detail-
+
+Citations-
+
+Apart from the in-text citations, you also need to develop a “Works Cited” page which will follow the MLA style guide. I know that citations can be daunting, which is why I will be providing a mini-lesson here on how you are supposed to format them in a more academic way. I am certain it will help you in getting your citations sorted out.
+
+I am sure that once you focus on these areas, your writing will look a lot more refined. I look forward to reading the revised draft. You have great potential. Keep writing. All the best!
+
+Regards,
+
+Mohini.
 
 ## What the operator will do with your answer
 

@@ -1,6 +1,6 @@
 # Reviewer voice profile
 
-Mined from 25 reviewed documents (307 comments, 0 endnote letters).
+Mined from 25 reviewed documents (307 comments, 25 endnote letters).
 
 ## Comment shape
 

@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from tools.extract_review import extract  # noqa: E402
+from tools.endnote_extract import body_letter, paragraphs  # noqa: E402
 
 CORPUS_DIR = ROOT / "style_corpus"
 
@@ -97,6 +98,7 @@ def main(folder: str) -> None:
         if data["comments"]:
             reviewer = data["comments"][0].get("author", "")
         doc_comments = []
+        letter = ""
         for raw in data["comments"]:
             label, body = split_label(raw["text"])
             if not body.strip():
@@ -113,17 +115,22 @@ def main(folder: str) -> None:
             comments.append(record)
             doc_comments.append(record)
         if data.get("endnote"):
+            letter = data["endnote"]
+        else:
+            # These deliverables append the letter to the body, not word/endnotes.xml
+            letter = body_letter(paragraphs(path))
+        if letter:
             endnotes.append({
                 "doc": path.name,
                 "reviewer": reviewer,
-                "text": data["endnote"],
-                "words": len(data["endnote"].split()),
+                "text": letter,
+                "words": len(letter.split()),
             })
         corpus.append({
             "doc": path.name,
             "reviewer": reviewer,
             "comments": doc_comments,
-            "endnote_words": len(data.get("endnote", "").split()),
+            "endnote_words": len(letter.split()) if letter else 0,
         })
 
     bodies = [c["body"] for c in comments]

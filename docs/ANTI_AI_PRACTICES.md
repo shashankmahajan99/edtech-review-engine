@@ -1,11 +1,17 @@
 # Reviewer voice and anti-detection practice
 
 Built from 25 reviewed documents by Mehak and Mohini (307 native comments,
-3 endnote letters). Regenerate the numbers with:
+25 endnote letters, 240.8 words on average, range 138–382). Regenerate the
+numbers with:
 
 ```
 python tools/mine_voice_corpus.py "C:\Users\shashank\Downloads\Doc examples"
 ```
+
+The letters are not Word endnotes: the reviewers append them to the document
+body as a closing section (praise, two or three named focus areas, next steps,
+sign-off). `tools/endnote_extract.py` locates the signature first and then walks
+back to the letter's opening paragraph.
 
 Outputs: `style_corpus/voice_corpus.json` (every comment with its anchored
 text), `style_corpus/voice_profile.json`, and `docs/VOICE_PROFILE.md`.
@@ -64,9 +70,9 @@ numbered lines, so you can also isolate the ones that flag.
 
 `docs/ASTRA_BRIEF.md` is a self-contained prompt pack built from the corpus: the
 task, the measured profile, 51 verbatim comments with their anchored text, and
-the three human endnote letters. Paste it into an external model, return the JSON
-it specifies, and the pattern banks can be regenerated from that answer rather
-than hand-written. Rebuild the brief with:
+**all 25 endnote letters** with their reviewer attribution. Paste it into an
+external model, return the JSON it specifies, and the pattern banks can be
+regenerated from that answer rather than hand-written. Rebuild the brief with:
 
 ```
 python tools/export_astra_brief.py

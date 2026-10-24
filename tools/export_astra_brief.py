@@ -121,7 +121,11 @@ def stratified(comments: list[dict], limit: int = 64) -> list[dict]:
 def build(profile: dict, corpus: dict) -> str:
     comments = corpus["comments"]
     samples = stratified(comments)
-    letters = endnote_texts()
+    letters = [
+        (e.get("doc", ""), e.get("reviewer", ""), e.get("text", ""), e.get("words", 0))
+        for e in corpus.get("endnotes", [])
+        if e.get("text")
+    ]
 
     lines = [
         "# Voice brief: deterministic review-comment generator",
@@ -155,6 +159,8 @@ def build(profile: dict, corpus: dict) -> str:
         "  explicitly tied to the measured distribution below.",
         "- Keep the constraints: the corpus uses **no contractions**, rare first person,",
         "  46% one-sentence comments, and hedges in 39% of comments.",
+        "- `endnote_template` must reproduce the structure and length of the letters below",
+        "  (138–382 words): an opening line, two or three named focus areas, and a sign-off.",
         "- No generic praise, no sentence-length uniformity, no throat-clearing.",
         "- Return only the JSON in a fenced ```json block, no commentary.",
         "",
@@ -178,15 +184,18 @@ def build(profile: dict, corpus: dict) -> str:
         label = c.get("label") or ""
         lines.append(f"- **{label or '—'}** · quote: “{quote}”")
         lines.append(f"  comment: {body}")
-    lines += ["", "## Human endnote letters", ""]
+    lines += ["", "## Human endnote letters", "",
+              "These are the closing letters the reviewers append to the draft: an opening",
+              "line, two or three named focus areas, and a sign-off. They are the ground",
+              "truth for `endnote_template`.", ""]
     if letters:
-        for name, text in letters:
-            lines.append(f"### {name}")
+        for name, reviewer, text, words in letters:
+            lines.append(f"### {reviewer or 'Reviewer'} — {name} ({words} words)")
             lines.append("")
             lines.append(text)
             lines.append("")
     else:
-        lines.append("_No letters found at the expected paths; ask the operator to supply them._")
+        lines.append("_No letters found in the corpus._")
         lines.append("")
     lines += [
         "## What the operator will do with your answer",
