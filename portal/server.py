@@ -1308,14 +1308,17 @@ async def submit_manuscript(
     if file and file.filename:
         file_stem = Path(file.filename).stem
         bytes_data = await file.read()
-        if file.filename.endswith(".docx"):
-            doc = docx.Document(io.BytesIO(bytes_data))
-            content = "\n\n".join([p.text for p in doc.paragraphs if p.text.strip()])
-        elif file.filename.endswith(".pdf"):
-            reader = pypdf.PdfReader(io.BytesIO(bytes_data))
-            content = "\n\n".join([p.extract_text() or "" for p in reader.pages if p.extract_text()])
-        else:
-            content = bytes_data.decode("utf-8", errors="ignore")
+        try:
+            if file.filename.endswith(".docx"):
+                doc = docx.Document(io.BytesIO(bytes_data))
+                content = "\n\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+            elif file.filename.endswith(".pdf"):
+                reader = pypdf.PdfReader(io.BytesIO(bytes_data))
+                content = "\n\n".join([p.extract_text() or "" for p in reader.pages if p.extract_text()])
+            else:
+                content = bytes_data.decode("utf-8", errors="ignore")
+        except Exception as e:
+            return HTMLResponse(f"<h3>Error: Could not parse document '{file.filename}'. Please verify the file is a valid .docx or .pdf document.</h3>", status_code=400)
 
     if not content:
         return HTMLResponse("<h3>Error: No text or document provided.</h3>", status_code=400)
@@ -1404,6 +1407,14 @@ async def client_status(job_id: str):
                 {f"<div class='text-xs text-blue-400 mt-1 font-semibold'>Target: {row['target_institution']}</div>" if row['target_institution'] else ''}
             </div>
             <div>{status_badge}</div>
+        </div>
+
+        <div class="bg-blue-950/40 border border-blue-500/30 rounded-2xl p-4 mb-6 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="text-xs font-mono font-bold text-white uppercase tracking-wider">6-Hour Guaranteed SLA Turnaround Clock Active</span>
+            </div>
+            <span class="text-xs font-mono text-emerald-400 font-bold">&lt; 6 Hours Guaranteed</span>
         </div>
 
         <div class="bg-slate-900/60 rounded-2xl p-6 border border-slate-700/60 mb-8">
@@ -2052,6 +2063,12 @@ async def download_docx_by_job_id(job_id: str):
     if not row or not row["docx_filename"]:
         raise HTTPException(status_code=404, detail="Document not found for this job ID")
     file_path = OUTPUT_DIR / row["docx_filename"]
+    if not file_path.exists():
+        # Fallback healing search for any valid docx matching this job_id
+        for candidate in OUTPUT_DIR.iterdir():
+            if candidate.name.startswith(f"{job_id}_") and candidate.name.endswith(".docx"):
+                file_path = candidate
+                break
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File missing from output directory")
     return FileResponse(file_path, filename=row["docx_filename"])
