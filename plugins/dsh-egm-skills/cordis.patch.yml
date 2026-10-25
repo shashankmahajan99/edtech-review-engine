@@ -1,0 +1,4 @@
+- insert:
+    - id: dsh-egm-skills
+      name: dsh-egm-skills
+      config: {}

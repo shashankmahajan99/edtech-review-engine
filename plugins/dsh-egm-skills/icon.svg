@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="An elephant and a goldfish">
+  <rect width="64" height="64" rx="14" fill="#0f172a"/>
+  <ellipse cx="24" cy="33" rx="12" ry="10" fill="#a78bfa"/>
+  <circle cx="36" cy="27" r="8" fill="#a78bfa"/>
+  <rect x="39" y="31" width="4" height="12" rx="2" fill="#a78bfa"/>
+  <ellipse cx="49" cy="48" rx="7" ry="4" fill="#2dd4bf"/>
+  <polygon points="56,48 61,44 61,52" fill="#2dd4bf"/>
+  <circle cx="46" cy="47" r="1" fill="#0f172a"/>
+</svg>

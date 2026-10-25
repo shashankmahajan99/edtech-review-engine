@@ -19,6 +19,26 @@ read and follow them directly. The vendored copy keeps `skills/`, `agents/`,
 `resources/`, `docs/` and the manifests; the upstream marketing site, tests and
 CI were dropped.
 
+## DeepSeek Harness plugin
+
+`plugins/dsh-egm-skills` is a Host-only DeepSeek Harness bundle that registers the
+seven EGM skills with the Harness `skills` service. It owns copies of `SKILL.md`,
+`docs/`, `agents/`, `resources/` and the Apache-2.0 LICENSE, so the skills resolve
+their relative references inside the package. `${CLAUDE_PLUGIN_ROOT}` in the
+upstream skill text is rewritten to `../..` for this layout.
+
+Installed in the desktop profile as `include:dsh-egm-skills`; after installation
+the skills appear in the catalog as `egm-brainstorm`, `egm-draft`, `egm-review`,
+`egm-review-loop`, `egm-resolve`, `egm-drift-report` and `egm-bootstrap`.
+
+Reinstall or move it with:
+
+```
+plugin_manager install_bundle target=C:\Users\shashank\edtech-review-engine\plugins\dsh-egm-skills
+```
+
+The bundle runs no model; it only hands instruction bodies to the agent.
+
 ## Using it here
 
 Design documents live in `docs/designs/` (see the README there). Ask the agent to
