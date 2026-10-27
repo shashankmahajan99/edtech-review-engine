@@ -1,5 +1,9 @@
+$ProjectDir = if ($PSScriptRoot) { (Resolve-Path "$PSScriptRoot\..").Path } else { (Get-Location).Path }
 $cloudflared = "C:\Program Files (x86)\cloudflared\cloudflared.exe"
-$log = "C:\Users\shashank\edtech-review-engine\output\tunnel.log"
+if (-not (Test-Path $cloudflared)) {
+    $cloudflared = "cloudflared"
+}
+$log = Join-Path $ProjectDir "output\tunnel.log"
 
 Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 1

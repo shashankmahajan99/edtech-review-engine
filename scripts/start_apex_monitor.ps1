@@ -1,7 +1,7 @@
 # Launch Apex Service Monitor as an independent background daemon
 # Runs completely decoupled from AGY or any terminal window.
 
-$ProjectDir = "C:\Users\shashank\edtech-review-engine"
+$ProjectDir = if ($PSScriptRoot) { (Resolve-Path "$PSScriptRoot\..").Path } else { (Get-Location).Path }
 Set-Location -Path $ProjectDir
 
 Write-Host "==========================================================" -ForegroundColor Cyan

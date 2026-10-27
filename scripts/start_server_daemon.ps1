@@ -2,7 +2,7 @@
 # Starts FastAPI server, Cloudflare HTTPS public tunnel, poller watchdog, and Apex Service Monitor.
 
 $ErrorActionPreference = "Continue"
-$ProjectDir = "C:\Users\shashank\edtech-review-engine"
+$ProjectDir = if ($PSScriptRoot) { (Resolve-Path "$PSScriptRoot\..").Path } else { (Get-Location).Path }
 Set-Location -Path $ProjectDir
 
 Write-Host "==========================================================" -ForegroundColor Cyan

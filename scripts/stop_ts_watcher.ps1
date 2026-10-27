@@ -1,6 +1,6 @@
 # Stop the ThinkingStorm inbox watcher started by start_ts_watcher.ps1.
 
-$root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$root = if ($PSScriptRoot) { (Resolve-Path "$PSScriptRoot\..").Path } else { (Get-Location).Path }
 $outbox = Join-Path $root "outbox"
 $pidFile = Join-Path $outbox "watcher.pid"
 

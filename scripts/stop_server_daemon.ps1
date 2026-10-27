@@ -1,6 +1,7 @@
 # Gracefully stops all Apex Review background server processes
 
-$pidFile = "C:\Users\shashank\edtech-review-engine\output\daemon_pids.json"
+$ProjectDir = if ($PSScriptRoot) { (Resolve-Path "$PSScriptRoot\..").Path } else { (Get-Location).Path }
+$pidFile = Join-Path $ProjectDir "output\daemon_pids.json"
 
 if (Test-Path $pidFile) {
     $pids = Get-Content $pidFile | ConvertFrom-Json

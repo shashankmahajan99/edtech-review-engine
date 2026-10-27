@@ -2,7 +2,7 @@
 # Drop .docx files into .\inbox and pick deliverables up from .\outbox.
 
 $ErrorActionPreference = "Stop"
-$root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$root = if ($PSScriptRoot) { (Resolve-Path "$PSScriptRoot\..").Path } else { (Get-Location).Path }
 Set-Location $root
 
 $inbox = Join-Path $root "inbox"
