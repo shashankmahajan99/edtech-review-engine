@@ -1,0 +1,106 @@
+<section class="page-intro">
+  <div><p class="eyebrow">THINKINGSTORM STUDIO</p><h1>A clearer path to<br>the next draft.</h1><p class="page-description">Turn a manuscript into focused feedback, a personal endnote,<br class="desktop-break"> and a practical plan for revision.</p></div>
+  <div class="workspace-status" id="workspaceStatus"><span></span> Ready for a manuscript</div>
+</section>
+
+<ol class="review-steps" aria-label="Review progress">
+  <li class="current" id="stepManuscript" aria-current="step"><span>1</span><div>Prepare manuscript<small>Upload a file or paste text</small></div></li>
+  <li id="stepReview"><span>2</span><div>Review feedback<small>Comments, endnote &amp; rubric</small></div></li>
+  <li id="stepDownload"><span>3</span><div>Download &amp; revise<small>Everything ready for Word</small></div></li>
+</ol>
+
+<div class="studio-grid">
+  <section class="manuscript-panel" aria-labelledby="manuscriptTitle">
+    <form id="reviewForm" class="surface input-card" novalidate>
+      <div class="card-heading"><div><span class="section-number">01 / MANUSCRIPT</span><h2 id="manuscriptTitle">Start with your draft</h2></div><span class="file-type-badge">.docx recommended</span></div>
+      <div class="input-mode-tabs" role="tablist" aria-label="Manuscript input method">
+        <button type="button" id="uploadMode" role="tab" aria-selected="true" aria-controls="uploadPanel" data-mode="upload">Upload a file</button>
+        <button type="button" id="pasteMode" role="tab" aria-selected="false" aria-controls="pastePanel" tabindex="-1" data-mode="paste">Paste text</button>
+      </div>
+      <div id="uploadPanel" role="tabpanel" aria-labelledby="uploadMode">
+        <div id="dropZone" class="upload-zone">
+          <span class="upload-symbol" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m-4 4 4-4 4 4M4 15v5h16v-5"/></svg></span>
+          <strong id="fileName">Your next draft starts here</strong>
+          <p id="fileHint">Drop a manuscript here, or choose a file below.</p>
+          <button type="button" id="chooseFileBtn" class="button button-outline">Choose a file <span aria-hidden="true">↗</span></button>
+          <input type="file" id="fileInput" name="file" accept=".docx,.pdf,.txt,.md" class="sr-only" aria-label="Manuscript file" tabindex="-1">
+          <span class="upload-formats">DOCX, PDF, TXT or Markdown · up to 20 MB</span>
+        </div>
+        <div class="file-controls" id="fileControls" hidden><span>File selected and ready</span><button type="button" id="removeFileBtn" class="text-button">Remove file</button></div>
+        <p class="field-note"><span aria-hidden="true">ⓘ</span> Use DOCX to preserve the original layout. PDFs need selectable text.</p>
+        <div id="originalFeedbackPanel" class="original-feedback" hidden>
+          <h3>Existing feedback in this document</h3>
+          <p id="originalFeedbackStatus" class="field-note" role="status" aria-live="polite"></p>
+          <div class="original-copy-actions">
+            <button type="button" id="copyOriginalCommentsBtn" class="button button-outline" disabled>Copy original comments</button>
+            <button type="button" id="copyOriginalEndnoteBtn" class="button button-outline" disabled>Copy original endnote</button>
+          </div>
+          <p class="field-note">Copy the existing feedback without running a new review. Comments copy as feedback text only.</p>
+        </div>
+      </div>
+      <div id="pastePanel" role="tabpanel" aria-labelledby="pasteMode" hidden>
+        <label for="manuscriptText" class="sr-only">Manuscript text</label>
+        <textarea id="manuscriptText" name="text" rows="10" placeholder="Paste the manuscript you would like to review…" aria-describedby="textHint"></textarea>
+        <div class="text-metadata"><span id="textHint">At least 80 words for an automatic review.</span><span><strong id="wordCount">0</strong> words</span></div>
+      </div>
+      <div class="form-divider"></div>
+      <div class="card-heading compact"><div><span class="section-number">02 / REVIEW DETAILS</span><h2>Make it personal</h2></div></div>
+      <div class="form-grid">
+        <div class="form-field"><label for="studentName">Student name <span>optional</span></label><input id="studentName" name="student_name" autocomplete="off" placeholder="e.g. Alex Morgan"></div>
+        <div class="form-field"><label for="academicStyle">Writing style</label><select id="academicStyle" name="academic_style"><option value="auto">Auto-detect style</option><option value="mla">MLA</option><option value="apa">APA</option></select></div>
+      </div>
+      <details class="review-options"><summary>Reviewer details <span id="reviewerSummary">Raunak Banga · RB</span></summary><div class="form-grid"><div class="form-field"><label for="reviewerName">Reviewer name</label><input id="reviewerName" name="reviewer_name" value="Raunak Banga" autocomplete="off"></div><div class="form-field"><label for="reviewerInitials">Initials</label><input id="reviewerInitials" name="reviewer_initials" value="RB" maxlength="8" autocomplete="off"></div></div></details>
+      <details class="review-options advanced-options"><summary>Use your own feedback <span>Optional</span></summary><p class="field-note">Add exact comments or an endnote. Leave both empty for an automatic review.</p><label for="customComments">Your comments</label><textarea id="customComments" name="custom_comments_text" rows="4" placeholder='Quote: "the passage to mark"&#10;Feedback: THESIS STATEMENT Your feedback…'></textarea><label for="customEndnote">Your endnote</label><textarea id="customEndnote" name="custom_endnote_text" rows="4" placeholder="Dear Student, …"></textarea></details>
+      <div id="inputError" class="inline-error" role="alert" hidden></div>
+      <button id="runBtn" type="submit" class="button button-primary run-button"><span id="runBtnLabel">Run complete review</span><span class="run-arrow" aria-hidden="true">→</span></button>
+      <p id="statusLine" class="submission-status" role="status" aria-live="polite">Your original manuscript stays intact.</p>
+    </form>
+    <p class="review-reminder">A useful starting point, with you in the editor’s seat.<br>Read the feedback before sharing it with a student.</p>
+  </section>
+
+  <section class="feedback-panel" aria-label="Review workspace" aria-busy="false" id="feedbackPanel">
+    <div id="errorBanner" class="message-banner error-banner" role="alert" tabindex="-1" hidden></div>
+    <div id="warningBanner" class="message-banner warning-banner" role="status" hidden></div>
+    <div id="emptyState" class="surface empty-state">
+      <span class="section-number">YOUR FEEDBACK, ALL IN ONE PLACE</span>
+      <div class="document-illustration" aria-hidden="true"><div class="document-sheet"><span class="document-line title-line"></span><span class="document-line"></span><span class="document-line"></span><span class="document-line marked-line"></span><span class="document-line short-line"></span><span class="document-line"></span><span class="document-line short-line"></span></div><div class="annotation-bubble"><span>✓</span> A focused next step</div><div class="illustration-orbit"></div></div>
+      <h2>Room for a fresh perspective.</h2><p>Add your manuscript to see the comments,<br>revision priorities and endnote together.</p>
+      <div class="deliverables-preview"><div><span>01</span><strong>Margin comments</strong><small>Feedback tied to specific passages</small></div><div><span>02</span><strong>A personal endnote</strong><small>A clear starting point for revision</small></div><div><span>03</span><strong>Files ready for Word</strong><small>Commented .docx · Tracked changes .docx · Report .html</small></div></div>
+      <a href="/docs/capabilities" class="empty-guide-link">Get to know your review desk <span aria-hidden="true">↗</span></a>
+    </div>
+    <div id="loadingState" class="surface loading-state" role="region" aria-labelledby="progressTitle" hidden>
+      <span class="section-number">YOUR REVIEW IS IN PROGRESS</span>
+      <h2 id="progressTitle" aria-live="polite">Uploading your manuscript</h2>
+      <div class="review-progress-heading"><label for="reviewProgress">Review work completed</label><strong id="progressPercent">Starting…</strong></div>
+      <progress id="reviewProgress" max="100" aria-describedby="progressDetails progressEstimate"></progress>
+      <p id="progressDetails" role="status">Waiting for the review to start.</p>
+      <p id="progressEstimate" class="progress-estimate"></p>
+      <span>Keep this page open. Downloads appear when all checks finish.</span>
+    </div>
+    <div id="results" hidden>
+      <div class="surface review-summary"><div class="result-heading"><div><span class="success-label" id="resultStatus">✓ REVIEW GENERATED</span><h2>Let’s shape the next draft.</h2></div><button id="newReviewBtn" type="button" class="text-button">New review <span aria-hidden="true">↗</span></button></div><p class="result-meta"><span id="studentLabel"></span><span aria-hidden="true">·</span><span id="jobId"></span></p><div id="statsGrid" class="review-stats"></div><p id="summary" class="executive-summary"></p><div id="reviewCoverage" class="message-banner" role="status" hidden></div><div class="download-heading"><h3>Your review files</h3><span>Ready to download</span></div><div id="downloads" class="download-grid"></div><details class="technical-details"><summary>Review checks &amp; diagnostics</summary><p>Inspect the findings and automated document checks behind this review.</p><a id="qaDownload" class="text-button" hidden>Download QA report .json ↗</a></details></div>
+      <div class="surface feedback-save-bar"><div><p id="feedbackSaveStatus" role="status" aria-live="polite">Run a new review to edit feedback.</p></div><div class="original-copy-actions"><button type="button" id="saveFeedbackBtn" class="button button-primary" disabled>Save feedback to DOCX</button><button type="button" id="discardFeedbackBtn" class="text-button" disabled>Discard edits</button></div></div>
+      <div id="feedbackSaveErrors" class="message-banner error-banner feedback-save-errors" role="alert" tabindex="-1" hidden></div>
+      <div class="surface feedback-card"><div class="feedback-tabs" role="tablist" aria-label="Review feedback"><button id="commentsTab" role="tab" type="button" aria-selected="true" aria-controls="tab-comments" data-tab="comments">Comments <span id="commentCount"></span></button><button id="endnoteTab" role="tab" type="button" aria-selected="false" aria-controls="tab-endnote" data-tab="endnote" tabindex="-1">Endnote</button><button id="rubricTab" role="tab" type="button" aria-selected="false" aria-controls="tab-rubric" data-tab="rubric" tabindex="-1">Rubric</button></div><div id="tab-comments" role="tabpanel" aria-labelledby="commentsTab" class="feedback-content"></div><div id="tab-endnote" role="tabpanel" aria-labelledby="endnoteTab" class="feedback-content" hidden></div><div id="tab-rubric" role="tabpanel" aria-labelledby="rubricTab" class="feedback-content" hidden></div><details class="bulk-paste-panel" id="bulkCommentsPanel"><summary>Paste humanized comments block</summary><div class="bulk-paste-body"><label for="bulkCommentsInput" class="comment-editor-label">Paste all rewritten comments in order (numbered <code>[1]..[N]</code> or separated by blank lines)</label><textarea id="bulkCommentsInput" rows="4" placeholder="[1] Paste all humanized comments here, separated by blank lines…"></textarea><div class="original-copy-actions"><button id="applyBulkCommentsBtn" type="button" class="button button-outline" disabled>Apply &amp; save comments to DOCX</button></div></div></details><div class="feedback-toolbar"><button id="copyCommentsBtn" type="button" class="text-button">Copy all comments</button><button id="copyEndnoteBtn" type="button" class="text-button">Copy endnote</button><span id="copyState" role="status" aria-live="polite"></span></div></div>
+    </div>
+  </section>
+</div>
+<details class="surface clever-panel" id="turnitoutPanel">
+  <summary>Local Turnitout humanizer <span>Runs on this PC</span></summary>
+  <div class="clever-content">
+    <h2>Feedback is humanized on this machine</h2>
+    <p>Turnitout’s deterministic rule set runs inside the review pipeline locally. No feedback is uploaded, no model is called, and no third-party service receives the text.</p>
+    <p class="field-note">The preservation gate keeps any rewrite that changes a fact, name, quotation or number. Copy all comments or the endnote above, check or humanize them, and paste the rewritten block back into the editor to update your DOCX.</p>
+  </div>
+</details>
+<details class="surface clever-panel" id="cleverDetectorPanel">
+  <summary>Clever AI Detector <span>Check comments &amp; endnotes</span></summary>
+  <div class="clever-content">
+    <h2>Check your feedback’s AI detection score</h2>
+    <p>Copy all comments or the endnote above, load the detector or humanizer, and paste your rewritten comments into “Paste humanized comments block” to save them directly to your DOCX.</p>
+    <p class="field-note">Text you submit is processed by Clever. <a href="https://cleverhumanizer.ai/privacy" target="_blank" rel="noopener noreferrer">Read Clever’s privacy policy ↗</a></p>
+    <div class="original-copy-actions"><button id="cleverDetectorLoad" type="button" class="button button-outline">Load AI Detector</button><button id="cleverDetectorClose" type="button" class="text-button">Close detector</button><a href="https://cleverhumanizer.ai/ai-detector" target="_blank" rel="noopener noreferrer" class="text-button">Open detector directly ↗</a></div>
+    <p id="cleverDetectorStatus" class="field-note" role="status" aria-live="polite">Nothing is sent automatically.</p>
+    <div id="cleverDetectorFrame" class="clever-frame" data-widget-url="https://widgets.cleverhumanizer.ai/embed/1f27613d01154840a5af389120dd6c2a?theme=auto"></div>
+  </div>
+</details>

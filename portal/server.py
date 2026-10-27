@@ -15,8 +15,11 @@ import sqlite3
 import docx
 from pathlib import Path
 from typing import Optional, List, Dict, Any
+from types import SimpleNamespace
 from fastapi import FastAPI, UploadFile, File, Form, Request, HTTPException, Depends, Response
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -25,6 +28,10 @@ if str(PROJECT_ROOT) not in sys.path:
 import pypdf
 from engine.processor import ReviewProcessor
 from engine.review.ingest import pdf_text_to_paragraphs, plain_text_to_paragraphs
+from engine.feedback_humanizer import configured_rewriter
+from engine.review.progress import emit_progress
+from portal.review_progress import review_progress
+from portal.feedback_editor import register_review, save_feedback, FeedbackSaveError, MAX_BODY as MAX_FEEDBACK_BODY
 from engine.openxml_track_changes import WordTrackChangesEngine
 from engine.thinkingstorm_engine import (
     ThinkingStormAutomator,
@@ -44,6 +51,14 @@ from security.audit_logger import log_compliance_event, get_job_audit_history, i
 from payments.stripe_gateway import StripeGateway, PACKAGES
 
 app = FastAPI(title="Apex Academic Review Desk", version="3.5.0")
+app.mount("/assets", StaticFiles(directory=PROJECT_ROOT / "portal" / "static"), name="workspace-assets")
+
+
+def feedback_rewriter():
+    try:
+        return configured_rewriter()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 def normalize_extracted_text(raw: str) -> str:
     """Reconstitutes fragmented PDF/text extractions into clean, natural paragraphs."""
@@ -1457,7 +1472,8 @@ async def submit_manuscript(
     from engine.review.pipeline import review_document as review_deliverable
 
     try:
-        ts_result = review_deliverable(
+        ts_result = await run_in_threadpool(
+            review_deliverable,
             str(base_docx_p),
             output_dir=str(OUTPUT_DIR),
             reviewer_name="Raunak Banga",
@@ -1465,10 +1481,13 @@ async def submit_manuscript(
             academic_style="auto",
             allow_existing_comments=True,
             overwrite=True,
+            feedback_rewriter=feedback_rewriter(),
         )
         if Path(ts_result.output_path) != commented_path:
             Path(ts_result.output_path).replace(commented_path)
     except ReviewRejected as exc:
+        if os.environ.get('TS_REVIEW_BACKEND') == 'local' or os.environ.get('TS_HUMANIZER') == 'local':
+            raise HTTPException(status_code=422, detail=f'Local review could not be completed: {exc}') from exc
         # Too short or no anchorable spans: fall back to the legacy commenter so
         # the client still receives a document, and record why.
         log_compliance_event(job_id, "REVIEW_ENGINE", "Pipeline declined; legacy fallback", str(exc))
@@ -1595,6 +1614,20 @@ async def thinkingstorm_studio(request: Request):
     return HTMLResponse(get_thinkingstorm_studio_html(user))
 
 
+@app.post('/api/thinkingstorm/original-feedback')
+async def thinkingstorm_original_feedback(file: UploadFile = File(...)):
+    if not file.filename or not file.filename.lower().endswith('.docx'):
+        raise HTTPException(status_code=400, detail='Choose a DOCX to read its original comments and endnote.')
+    data = await file.read()
+    if len(data) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail='Choose a DOCX smaller than 20 MB.')
+    try:
+        from portal.feedback_extract import extract_original_feedback
+        return extract_original_feedback(data, file.filename)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail='The original feedback could not be read. Re-save the DOCX in Word and try again.') from exc
+
+
 @app.post("/api/thinkingstorm/execute")
 async def execute_thinkingstorm_pipeline(
     student_name: str = Form("Student"),
@@ -1604,7 +1637,50 @@ async def execute_thinkingstorm_pipeline(
     text: str = Form(""),
     custom_comments_text: str = Form(""),
     custom_endnote_text: str = Form(""),
-    file: UploadFile = File(None)
+    file: UploadFile = File(None),
+    progress_id: Optional[str] = Form(None),
+):
+    token = progress_id if isinstance(progress_id, str) else None
+    progress = review_progress.start(token)
+    try:
+        buffered = SimpleNamespace(filename=file.filename, data=await file.read()) if file is not None else None
+        result = await run_in_threadpool(
+            _execute_thinkingstorm_pipeline, student_name, reviewer_name, reviewer_initials,
+            academic_style, text, custom_comments_text, custom_endnote_text, buffered, progress)
+    except BaseException:
+        review_progress.finish(token, False)
+        raise
+    review_progress.finish(token, True)
+    return result
+
+
+@app.post('/api/thinkingstorm/feedback/{job_id}')
+async def save_thinkingstorm_feedback(job_id: str, request: Request):
+    body = bytearray()
+    async for chunk in request.stream():
+        body.extend(chunk)
+        if len(body) > MAX_FEEDBACK_BODY:
+            raise HTTPException(413, 'Feedback save request is too large.')
+    try:
+        payload = json.loads(body)
+    except (ValueError, UnicodeError) as exc:
+        raise HTTPException(400, 'Feedback save request must contain valid JSON.') from exc
+    try:
+        return await run_in_threadpool(save_feedback, OUTPUT_DIR, job_id, payload)
+    except FeedbackSaveError as exc:
+        return JSONResponse(status_code=422, content={'detail': exc.detail, 'issues': exc.issues}, headers={'Cache-Control': 'no-store'})
+    except OSError as exc:
+        raise HTTPException(503, 'The reviewed file could not be saved. Keep your edits and try again.') from exc
+
+
+@app.get('/api/thinkingstorm/progress/{progress_id}')
+async def thinkingstorm_progress(progress_id: str):
+    return JSONResponse(review_progress.snapshot(progress_id), headers={'Cache-Control': 'no-store'})
+
+
+def _execute_thinkingstorm_pipeline(
+    student_name, reviewer_name, reviewer_initials, academic_style,
+    text, custom_comments_text, custom_endnote_text, file, progress=None,
 ):
     now = time.time()
     job_id = f"ts-{uuid.uuid4().hex[:6]}"
@@ -1613,12 +1689,15 @@ async def execute_thinkingstorm_pipeline(
     # Determine original filename stem and extract readable text
     original_stem = "manuscript"
     bytes_data = None
+    original_feedback = None
     if file and file.filename:
         original_stem = Path(file.filename).stem
-        bytes_data = await file.read()
+        bytes_data = file.data
         suffix = Path(file.filename).suffix.lower()
         if suffix == ".docx":
             try:
+                from portal.feedback_extract import extract_original_feedback
+                original_feedback = extract_original_feedback(bytes_data, file.filename)
                 doc_in = docx.Document(io.BytesIO(bytes_data))
                 content = normalize_extracted_text(
                     "\n\n".join([p.text for p in doc_in.paragraphs if p.text.strip()])
@@ -1672,6 +1751,7 @@ async def execute_thinkingstorm_pipeline(
     # 2. Create raw base docx
     base_docx_p = OUTPUT_DIR / f"{job_id}_raw.docx"
     stripped_comments = 0
+    stripped_review_paragraphs = 0
     if bytes_data and file and file.filename and file.filename.lower().endswith(".docx"):
         base_docx_p.write_bytes(bytes_data)
         # A re-uploaded deliverable already carries our previous comments. Appending
@@ -1694,6 +1774,16 @@ async def execute_thinkingstorm_pipeline(
                 _clean.replace(base_docx_p)
         except Exception:
             stripped_comments = 0
+        from engine.review.source_material import remove_previous_letter
+        review_clean_path = OUTPUT_DIR / f"{job_id}_review_clean.docx"
+        previous_review = remove_previous_letter(base_docx_p, review_clean_path)
+        if previous_review['removed']:
+            stripped_review_paragraphs = previous_review['paragraphs']
+            review_clean_path.replace(base_docx_p)
+        from engine.review.docmodel import load_document as clean_model_load
+        clean_model = clean_model_load(str(base_docx_p), academic_style=academic_style)
+        content = clean_model.full_text
+        word_count = clean_model.word_count
     else:
         raw_doc = docx.Document()
         for p in content.split("\n\n"):
@@ -1710,6 +1800,7 @@ async def execute_thinkingstorm_pipeline(
     qa_name = ""
     endnote_text = ""
     if manual_mode:
+        emit_progress(progress, 'reviewing')
         # Reviewer-supplied comments/endnote keep the legacy exact-injection path.
         automator = ThinkingStormAutomator(reviewer_name=reviewer_name, initials=reviewer_initials)
         domains = {}
@@ -1740,8 +1831,10 @@ async def execute_thinkingstorm_pipeline(
             custom_domains=domains_arg,
             custom_endnote_text=endnote_arg,
         )
+        emit_progress(progress, 'feedback_ready', total_passages=0, completed_passages=0)
+        emit_progress(progress, 'document_ready')
     else:
-        # Deterministic, zero-token pipeline with a mandatory release gate.
+        # Configured review backend with the same mandatory Word release gate.
         from engine.review.links import link_for
         from engine.review.pipeline import PipelineError, review_document
 
@@ -1766,11 +1859,12 @@ async def execute_thinkingstorm_pipeline(
                 academic_style=academic_style,
                 allow_existing_comments=True,
                 overwrite=True,
+                feedback_rewriter=feedback_rewriter(),
+                progress=progress,
             )
         except PipelineError as exc:
-            # A readable manuscript should never dead-end on a validation refusal:
-            # fall back to the direct commenter and report what happened.
-            pipeline_warning = str(exc)
+            # A validation refusal must not silently invoke the legacy generator.
+            raise HTTPException(status_code=422, detail=f"Review could not pass quality checks: {exc}") from exc
 
         if ts_result is not None:
             if Path(ts_result.output_path) != commented_path:
@@ -1808,18 +1902,6 @@ async def execute_thinkingstorm_pipeline(
                     idx += 2
                 else:
                     idx += 1
-        else:
-            automator = ThinkingStormAutomator(reviewer_name=reviewer_name,
-                                               initials=reviewer_initials)
-            comments, domains = automator.analyze_manuscript(content, student_name=student_name)
-            automator.generate_reviewed_docx(
-                input_docx=str(base_docx_p),
-                output_docx=str(commented_path),
-                student_name=student_name,
-                custom_comments=comments,
-                custom_domains=domains,
-            )
-
     # 4. Deterministic rubric + redline (no model call; derived from the same findings)
     annotated_filename = f"{job_id}_annotated.docx"
     annotated_path = OUTPUT_DIR / annotated_filename
@@ -1841,7 +1923,13 @@ async def execute_thinkingstorm_pipeline(
         institution=academic_style,
         student_name=student_name,
         reviewer_name=reviewer_name,
+        delivered_endnote=ts_result.endnote if not manual_mode and ts_result is not None else None,
     )
+    if not manual_mode and ts_result is not None and ts_result.generation.get('model'):
+        # Report priorities must agree with the delivered model review.
+        review_dict['tutor_overview_letter'] = endnote_text
+        review_dict['executive_summary'] = ts_result.endnote[1]
+        review_dict['top_action_items'] = [heading + ': ' + plan for heading, plan in domains.items()]
 
     # Tracked changes are applied to the original file: nothing is rebuilt, so
     # images, tables, fonts and every untouched run survive exactly.
@@ -1854,6 +1942,12 @@ async def execute_thinkingstorm_pipeline(
         author=reviewer_name,
     )
 
+    review_quality = ts_result.quality if not manual_mode and ts_result is not None else {}
+    if review_quality.get('needs_review'):
+        pipeline_warning = (pipeline_warning + ' ' + ' '.join(review_quality['messages'])).strip()
+        review_dict['executive_summary'] = 'Review needs attention. ' + review_dict.get('executive_summary', '')
+    review_dict['review_quality'] = review_quality
+
     # 5. Generate Report HTML
     html_filename = f"{job_id}_report.html"
     processor.generate_html_report(review_dict, str(OUTPUT_DIR / html_filename))
@@ -1865,20 +1959,24 @@ async def execute_thinkingstorm_pipeline(
                 job_id, client_name, email, package, mode, original_text, sanitized_text,
                 pii_token_map, overall_score, status, docx_filename, html_filename,
                 target_institution, counselor_brief, word_count, created_at
-            ) VALUES (?, ?, ?, 'ThinkingStorm Studio', 'academic', ?, ?, '{}', 88, 'approved', ?, ?, ?, 'ThinkingStorm Socratic Review', ?, ?)
+            ) VALUES (?, ?, ?, 'ThinkingStorm Studio', 'academic', ?, ?, '{}', ?, ?, ?, ?, ?, 'ThinkingStorm Socratic Review', ?, ?)
         """, (
             job_id, student_name, "personal.reviewer@apexreview.org", content, content,
+            review_dict.get('overall_score'), 'needs_review' if review_quality.get('needs_review') else 'approved',
             annotated_filename, html_filename, f"Academic Writing ({academic_style.upper()})", word_count, now
         ))
 
     if stripped_comments:
         note = f"Removed {stripped_comments} existing comment(s) before reviewing, so you get one clean set."
         pipeline_warning = f"{pipeline_warning} {note}".strip()
+    if stripped_review_paragraphs:
+        pipeline_warning = (pipeline_warning + ' Removed the previous reviewer’s closing letter before analysing the manuscript.').strip()
+    review_quality = ts_result.quality if not manual_mode and ts_result is not None else {}
 
     reviewed_paragraphs = sorted({
         c.get("paragraph") for c in comments if isinstance(c, dict) and c.get("paragraph") is not None
     })
-    return {
+    response = {
         "job_id": job_id,
         "student_name": student_name,
         "reviewer_name": reviewer_name,
@@ -1892,8 +1990,10 @@ async def execute_thinkingstorm_pipeline(
         "annotated_docx_url": f"/download/docx/{job_id}",
         "report_url": f"/download/report/{job_id}",
         "qa_report_url": f"/download/{qa_name}" if qa_name else "",
-        "status": "success",
+        "status": "needs_review" if review_quality.get('needs_review') else "success",
         "warning": pipeline_warning,
+        "review_quality": review_quality,
+        "original_feedback": original_feedback,
         "overall_score": review_dict.get("overall_score"),
         "executive_summary": review_dict.get("executive_summary"),
         "rubric": review_dict.get("category_scores", {}),
@@ -1902,6 +2002,9 @@ async def execute_thinkingstorm_pipeline(
             "commented": len(reviewed_paragraphs),
         },
     }
+    response.update(register_review(OUTPUT_DIR, job_id, base_docx_p, commented_path,
+                                    comments, reviewer_name))
+    return response
 
 
 @app.get("/reviewer", response_class=HTMLResponse)
@@ -2506,8 +2609,10 @@ async def inbound_lead_reply(payload: Dict[str, Any], request: Request):
 # ==========================================
 @app.get("/download/{filename}")
 async def download_file(filename: str):
+    if '/' in filename or '\\' in filename or filename in {'.', '..'}:
+        raise HTTPException(404, detail='File not found')
     file_path = OUTPUT_DIR / filename
-    if not file_path.exists():
+    if not file_path.is_file() or file_path.resolve().parent != OUTPUT_DIR.resolve():
         return JSONResponse({"error": "File not found"}, status_code=404)
     return FileResponse(file_path, filename=filename)
 
@@ -2517,10 +2622,10 @@ async def download_commented_docx(job_id: str):
     for candidate in OUTPUT_DIR.iterdir():
         if candidate.name.startswith(f"{job_id}_") and "commented" in candidate.name and candidate.name.endswith(".docx"):
             clean_filename = candidate.name[len(f"{job_id}_"):]
-            return FileResponse(candidate, filename=clean_filename)
+            return FileResponse(candidate, filename=clean_filename, headers={'Cache-Control': 'no-store'})
     for candidate in OUTPUT_DIR.iterdir():
         if candidate.name.startswith(f"{job_id}") and "commented" in candidate.name and candidate.name.endswith(".docx"):
-            return FileResponse(candidate, filename="ThinkingStorm_commented.docx")
+            return FileResponse(candidate, filename="ThinkingStorm_commented.docx", headers={'Cache-Control': 'no-store'})
     # Fallback to standard docx
     return await download_docx_by_job_id(job_id)
 

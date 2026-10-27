@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 import shutil
+import re
 import subprocess
 import sys
-import tempfile
 import unittest
 from pathlib import Path
 
@@ -20,15 +20,12 @@ class TestStudioScript(unittest.TestCase):
         if not node:
             self.skipTest("node not installed")
         html = get_thinkingstorm_studio_html({"email": "test@example.com"})
-        script = html.split("<script>")[1].split("</script>")[0]
-        with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as fh:
-            fh.write(script)
-            path = fh.name
-        try:
-            result = subprocess.run([node, "--check", path], capture_output=True, text=True)
-        finally:
-            Path(path).unlink(missing_ok=True)
-        self.assertEqual(result.returncode, 0, result.stderr[-800:])
+        scripts = re.findall(r'<script\b[^>]*src="(/assets/[^"?]+)', html)
+        self.assertTrue(scripts, "workspace scripts were not linked")
+        for source in scripts:
+            path = ROOT / "portal" / "static" / Path(source).name
+            result = subprocess.run([node, "--check", str(path)], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, f"{path.name}: {result.stderr[-800:]}")
 
 
 if __name__ == "__main__":

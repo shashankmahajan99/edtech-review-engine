@@ -12,6 +12,8 @@ if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 os.environ["PYTHONPATH"] = str(BASE_DIR)
 os.environ["PYTHONIOENCODING"] = "utf-8"
+from engine.review_runtime import apply_runtime_defaults
+apply_runtime_defaults()
 
 import uvicorn
 
