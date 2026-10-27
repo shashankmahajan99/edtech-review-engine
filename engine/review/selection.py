@@ -1,7 +1,7 @@
 """Comment selection: turn raw findings into a professional review layout.
 
-The human exemplars run 9-17 comments per manuscript, roughly one per 90 words,
-spread across argument, mechanics and formatting.  Selection therefore:
+The requested review density is 3–4 supported comments per page, spread across
+argument, mechanics and formatting. Selection therefore:
 
 * drops overlapping anchors and duplicate paragraphs,
 * caps how many comments any one category can take,
@@ -12,7 +12,7 @@ spread across argument, mechanics and formatting.  Selection therefore:
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from .analysis import (
     ABSTRACT, APA, CLARITY, CONCLUSION, COUNTER, EVIDENCE, FRAGMENTS, INFORMAL,
@@ -60,6 +60,16 @@ RULE_CAPS = {
     "thesis_vague": 1,
     "thesis_no_preview": 1,
     "conclusion_summary": 1,
+    "paragraph_overlong": 2,
+    "informal_diction": 1,
+    "reference_alphabetical": 1,
+    "reference_hanging_indent": 1,
+    "reference_heading_style": 1,
+    "mla_article_title_format": 2,
+    "intro_concrete_context": 1,
+    'acronym_case': 1,
+    'front_double_spacing': 1,
+    'apa_locator_hash': 2,
 }
 
 
@@ -73,8 +83,8 @@ class SelectedComment:
 def _target_count(model: DocumentModel, comprehensive: bool = False) -> int:
     words = model.word_count
     if comprehensive:
-        # Roughly one note per 55 words: a full margin, not a sampler.
-        return max(12, min(34, round(words / 55) + 4))
+        from .coverage import page_map
+        return min(120, max(4, len(page_map(model).pages) * 4))
     return max(7, min(18, round(words / 85) + 3))
 
 
@@ -99,9 +109,15 @@ def _premerge(findings: list[Finding]) -> list[Finding]:
     """
     out: list[Finding] = []
     used: set[int] = set()
-    ordered = sorted(findings, key=lambda f: (-f.priority, f.paragraph.index, f.start))
+    # Selection must not rewrite the analysis used by the report or a later pass.
+    ordered = sorted((replace(f, facts=dict(f.facts)) for f in findings),
+                     key=lambda f: (-f.priority, f.paragraph.index, f.start))
     for i, f in enumerate(ordered):
         if i in used:
+            continue
+        if f.rule_id not in {'conclusion_summary', 'conclusion_thin', 'thesis_vague', 'thesis_no_preview', 'thesis_missing'}:
+            out.append(f)
+            used.add(i)
             continue
         for (primary_cat, secondary_cat), rule in MERGE_PAIRS.items():
             if f.category != primary_cat:
@@ -120,8 +136,9 @@ def _premerge(findings: list[Finding]) -> list[Finding]:
                 f.category = f"{f.category} AND {partner.category}"
                 f.priority = max(f.priority, partner.priority)
                 used.add(partner_idx)
-            break
+                break
         out.append(f)
+        used.add(i)
     return out
 
 
@@ -135,36 +152,59 @@ def select_comments(model: DocumentModel, result: AnalysisResult,
     per_category: dict[str, int] = {}
     per_paragraph: dict[int, int] = {}
     per_rule: dict[str, int] = {}
+    from .coverage import page_map
+    pages = page_map(model)
+    per_page: dict[int, int] = {}
 
     def can_take(f: Finding) -> bool:
+        if comprehensive and per_page.get(pages.page_for(f), 0) >= 4:
+            return False
         cap = CATEGORY_CAPS.get(f.category, 2)
         if comprehensive and f.category not in {THESIS, CONCLUSION, ABSTRACT, COUNTER, INTRO}:
-            cap += 2
+            cap = max(cap + 2, len(pages.pages))
+        if comprehensive and f.category in {MLA, APA}:
+            cap = 10
         if per_category.get(f.category, 0) >= cap:
             return False
         rule_cap = RULE_CAPS.get(f.rule_id, 2)
         if comprehensive and f.rule_id not in RULE_CAPS:
-            rule_cap = 3
+            rule_cap = max(3, len(pages.pages))
         if per_rule.get(f.rule_id, 0) >= rule_cap:
             return False
         # A full review annotates the paragraph, not just the document: permit
         # up to three notes on a substantial paragraph when they do not overlap.
         words = len(f.paragraph.words)
-        limit = 3 if comprehensive and words >= 45 else (2 if words <= 20 or words >= 35 else 1)
+        limit = min(6, max(3, (words + 79) // 80 + 1)) if comprehensive and words >= 45 else (2 if words <= 20 or words >= 35 else 1)
         if per_paragraph.get(f.paragraph.index, 0) >= limit:
             return False
         if any(_overlaps(f, other) for other in chosen):
             return False
         return True
 
+    def take(f):
+        chosen.append(f)
+        per_category[f.category] = per_category.get(f.category, 0) + 1
+        per_paragraph[f.paragraph.index] = per_paragraph.get(f.paragraph.index, 0) + 1
+        per_rule[f.rule_id] = per_rule.get(f.rule_id, 0) + 1
+        page = pages.page_for(f)
+        per_page[page] = per_page.get(page, 0) + 1
+
+    if comprehensive:
+        # Reserve a supported note for each logical body block before spending
+        # the remaining page budget on extra formatting or repeat corrections.
+        for block in result.blocks:
+            if len(chosen) >= budget:
+                break
+            ids = {p.index for p in block.paragraphs}
+            candidate = next((f for f in findings if f.paragraph.index in ids and can_take(f)), None)
+            if candidate is not None:
+                take(candidate)
+
     for f in findings:
         if len(chosen) >= budget:
             break
         if can_take(f):
-            chosen.append(f)
-            per_category[f.category] = per_category.get(f.category, 0) + 1
-            per_paragraph[f.paragraph.index] = per_paragraph.get(f.paragraph.index, 0) + 1
-            per_rule[f.rule_id] = per_rule.get(f.rule_id, 0) + 1
+            take(f)
 
     if comprehensive:
         # Coverage pass: every body block with a finding gets up to two notes,
@@ -181,7 +221,7 @@ def select_comments(model: DocumentModel, result: AnalysisResult,
             candidates.sort(key=lambda f: -f.priority)
             added = 0
             for finding in candidates:
-                if added >= 2:
+                if added >= 2 or len(chosen) >= budget:
                     break
                 if can_take(finding):
                     chosen.append(finding)
@@ -189,11 +229,41 @@ def select_comments(model: DocumentModel, result: AnalysisResult,
                     per_category[finding.category] = per_category.get(finding.category, 0) + 1
                     per_paragraph[finding.paragraph.index] = per_paragraph.get(finding.paragraph.index, 0) + 1
                     per_rule[finding.rule_id] = per_rule.get(finding.rule_id, 0) + 1
+                    page = pages.page_for(finding)
+                    per_page[page] = per_page.get(page, 0) + 1
                     added += 1
+
+    if comprehensive:
+        # Strict density: every page must reach the requested minimum, not just
+        # the maximum. Fill from findings already present on that page; this
+        # pass relaxes category/rule caps but keeps non-overlap and the 4/page
+        # hard cap.
+        from .coverage import PROFILE
+        minimum = PROFILE['requested_comments_per_page']['min']
+        maximum = PROFILE['requested_comments_per_page']['max']
+        chosen_ids = {id(f) for f in chosen}
+        for page in sorted(set(pages.pages) | set(per_page)):
+            while per_page.get(page, 0) < minimum:
+                candidate = next(
+                    (f for f in findings
+                     if id(f) not in chosen_ids
+                     and pages.page_for(f) == page
+                     and per_page.get(page, 0) < maximum
+                     and not any(_overlaps(f, other) for other in chosen)),
+                    None,
+                )
+                if candidate is None:
+                    break
+                chosen.append(candidate)
+                chosen_ids.add(id(candidate))
+                per_category[candidate.category] = per_category.get(candidate.category, 0) + 1
+                per_paragraph[candidate.paragraph.index] = per_paragraph.get(candidate.paragraph.index, 0) + 1
+                per_rule[candidate.rule_id] = per_rule.get(candidate.rule_id, 0) + 1
+                per_page[page] = per_page.get(page, 0) + 1
 
     # Rhetorical coverage: if we have room and nothing rhetorical was chosen,
     # promote the strongest rhetorical finding even at the cost of mechanics.
-    if budget > 6 and not any(f.category.split(" AND ")[0] in RHETORICAL for f in chosen):
+    if not comprehensive and budget > 6 and not any(f.category.split(" AND ")[0] in RHETORICAL for f in chosen):
         promoted = next((f for f in findings if f.category in RHETORICAL
                          and f.paragraph.index not in per_paragraph), None)
         if promoted is not None:

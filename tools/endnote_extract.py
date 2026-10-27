@@ -25,7 +25,7 @@ SIGNATURE = re.compile(
 START = re.compile(
     r"^(?:you have done (?:a )?(?:good|great|nice|fine|solid|decent|pretty) (?:job|work)|"
     r"you have (?:a )?(?:good|great|strong|solid) (?:start|draft)|"
-    r"thank you for submitting|dear\s|"
+    r"thank you for submitting|dear\s|(?:hi|hello)\s+[A-Za-z][A-Za-z'\u2019-]*[,!]?\s*$|"
     r"there are (?:a few|some) (?:areas|things|suggestions)|"
     r"you have written|your draft|you have a good start)",
     re.I,

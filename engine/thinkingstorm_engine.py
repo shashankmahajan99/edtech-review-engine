@@ -637,7 +637,13 @@ class ThinkingStormAutomator:
             body = root.find(f"{{{W_NS}}}body")
             existing_en_ref = root.find(f".//{{{W_NS}}}endnoteReference")
             if existing_en_ref is None:
-                endnote_p = ET.SubElement(body, f"{{{W_NS}}}p")
+                endnote_p = ET.Element(f"{{{W_NS}}}p")
+                # Word requires section properties to remain the final body child.
+                section = body.find(f"{{{W_NS}}}sectPr")
+                if section is not None:
+                    body.insert(list(body).index(section), endnote_p)
+                else:
+                    body.append(endnote_p)
                 endnote_r = ET.SubElement(endnote_p, f"{{{W_NS}}}r")
                 endnote_rPr = ET.SubElement(endnote_r, f"{{{W_NS}}}rPr")
                 ET.SubElement(endnote_rPr, f"{{{W_NS}}}rStyle", {f"{{{W_NS}}}val": "EndnoteReference"})

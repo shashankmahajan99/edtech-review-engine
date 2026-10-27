@@ -79,6 +79,12 @@ MOVE_BY_RULE = {
 
 _STRENGTH = {"strength", "positive"}
 
+# Legacy KB patterns predate rule bindings. Approve exact observations here;
+# new patterns can declare their own `rules` metadata. Text edits require review.
+_APPROVED_OBSERVATIONS = {
+    "intro_generic": {"The opening about {topic} is a little broad."},
+}
+
 
 @lru_cache(maxsize=1)
 def load() -> dict | None:
@@ -162,6 +168,8 @@ def facts_for(model, finding) -> dict[str, str]:
 
     if finding.facts.get("term"):
         facts["term"] = str(finding.facts["term"]).strip()
+    if finding.facts.get('vague'):
+        facts['vague'] = ' and '.join('“' + str(term) + '”' for term in finding.facts['vague'][:2])
 
     facts["grammar_feature"] = finding.category.lower()
     if model.style and model.style != "auto":
@@ -174,7 +182,7 @@ def facts_for(model, finding) -> dict[str, str]:
 
 
 CONCRETE_SLOTS = {"anchor", "quote", "source", "topic", "term", "value",
-                  "measure", "style", "genre", "grammar_feature"}
+                  "measure", "style", "genre", "grammar_feature", "vague"}
 
 # KB patterns are written per rhetorical move, not per diagnostic.  For citation
 # and mechanics moves they can contradict the specific rule (an "indentation"
@@ -188,11 +196,10 @@ SAFE_MOVES = {
 
 
 def patterns_for_rule(rule: str, model, finding) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
-    """Filled KB patterns for a rule, split into specific and generic.
+    """Explicitly rule-bound KB patterns, split into specific and generic.
 
-    Specific patterns use a verified anchor/source/topic and are preferred over
-    the local templates; generic ones carry no draft detail and only add variety
-    at the end of the pool.
+    Patterns must declare the diagnostic rules they support. Having slots that
+    can be filled does not establish that a pattern's diagnosis is true.
     """
     data = load()
     if not data:
@@ -207,9 +214,14 @@ def patterns_for_rule(rule: str, model, finding) -> tuple[list[tuple[str, str]],
     specific: list[tuple[str, str]] = []
     generic: list[tuple[str, str]] = []
     for pattern in move.get("patterns", []):
+        observation = pattern.get("observation", "")
+        # Sharing a category does not establish the diagnosis. A conclusion
+        # pattern about a new idea cannot describe a finding about repetition.
+        if (rule not in pattern.get("rules", [])
+                and observation not in _APPROVED_OBSERVATIONS.get(rule, set())):
+            continue
         if str(pattern.get("intent", "issue")).lower() in _STRENGTH:
             continue
-        observation = pattern.get("observation", "")
         advice = pattern.get("advice", "")
         slots = set(pattern.get("required_slots") or
                     re.findall(r"\{([^{}]+)\}", observation + advice))

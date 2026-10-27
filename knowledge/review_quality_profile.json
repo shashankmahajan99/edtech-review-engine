@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "reference_documents": 25,
+  "reference_comment_words_mean": 26.94,
+  "reference_endnote_words": {"min": 138, "max": 382},
+  "requested_comments_per_page": {"min": 3, "max": 4},
+  "estimated_words_per_page": 300,
+  "developmental_comment_min_words": 25,
+  "purpose": "Editorial coverage and depth. Counts are targets, not instructions to invent defects or pad feedback."
+}

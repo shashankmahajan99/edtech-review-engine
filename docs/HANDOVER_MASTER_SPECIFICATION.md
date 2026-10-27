@@ -164,7 +164,7 @@ The platform includes a built-in CRM database containing **250 verified educatio
 - **India & Southeast Asia:** LeapScholar, Leverage Edu, AdmitEdge, GlobalEd Overseas, Singapore Premier Prep, Chennai IB Advisory.
 - **United Kingdom & Europe:** Oxbridge Applications, Carfax Education, Saint-Germain Consulting, Zurich Ivy Consulting.
 
-All 250 records include verified contact emails, decision-maker titles, and region-specific pain points (overflow capacity for November 1 / January 1 deadlines). The integrated SMTP engine (`run_smtp.py`) can dispatch RFC 5321 compliant outreach directly from `editorial-desk@apexreview.co`.
+All 250 records include verified contact emails, decision-maker titles, and region-specific pain points (overflow capacity for November 1 / January 1 deadlines). The integrated SMTP engine (`scripts/run_smtp.py`) can dispatch RFC 5321 compliant outreach directly from `editorial-desk@apexreview.co`.
 
 ---
 
@@ -201,7 +201,7 @@ graph TD
 
     subgraph Background Daemons
         Poller["run_poller.py<br/>(Queue Daemon)"] -.-> DB
-        SMTP["run_smtp.py<br/>(Port 1025)"] -.-> Storage
+        SMTP["scripts/run_smtp.py<br/>(Port 1025)"] -.-> Storage
         Watchdog["Watchdog Cron<br/>(Hourly Health)"] -.-> FastAPI
     end
 ```
@@ -527,7 +527,7 @@ graph LR
     subgraph Active Host Daemons
         D1["Portal Web Server<br/>run_portal.py (Port 8000)"]
         D2["Orchestrator Poller<br/>run_poller.py (30s Cycle)"]
-        D3["Enterprise SMTP<br/>run_smtp.py (Port 1025)"]
+        D3["Enterprise SMTP<br/>scripts/run_smtp.py (Port 1025)"]
         D4["Cloudflare Edge<br/>cloudflared tunnel"]
         D5["System Watchdog<br/>Hourly Cron"]
     end
@@ -547,7 +547,7 @@ python "C:\Users\shashank\edtech-review-engine\run_poller.py" 30
 
 # 3. Start SMTP Server
 $env:PYTHONPATH="C:\Users\shashank\edtech-review-engine"
-python "C:\Users\shashank\edtech-review-engine\run_smtp.py"
+python "C:\Users\shashank\edtech-review-engine\scripts\run_smtp.py"
 
 # 4. Start Cloudflare Tunnel
 & "C:\Program Files (x86)\cloudflared\cloudflared.exe" tunnel --url http://127.0.0.1:8000 --no-autoupdate

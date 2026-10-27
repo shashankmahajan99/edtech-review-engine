@@ -106,11 +106,11 @@ class DocumentModel:
 
     @property
     def full_text(self) -> str:
-        return "\n\n".join(p.text for p in self.paragraphs if p.text.strip())
+        return "\n\n".join(p.text for p in self.paragraphs if p.text.strip() and p.region != "reviewer_note")
 
     @property
     def word_count(self) -> int:
-        return sum(len(p.words) for p in self.paragraphs)
+        return sum(len(p.words) for p in self.paragraphs if p.region != "reviewer_note")
 
 
 _CONTAINERS = {
@@ -202,9 +202,20 @@ def _looks_like_heading(text: str, style: str) -> bool:
 
 _REF_HEADINGS = {
     "works cited", "work cited", "references", "reference list", "bibliography",
-    "literature cited", "sources", "sources cited",
+    "literature cited", "sources", "sources cited", "reference",
 }
 _ABSTRACT_HEADINGS = {"abstract", "executive summary", "summary"}
+
+
+def reference_heading_span(text: str) -> tuple[int, int] | None:
+    """Recognize a source heading, including one accidentally joined to an entry."""
+    match = re.match(r'^\s*(works cited|work cited|references|reference list|bibliography|sources cited|sources|reference)\b', text, re.I)
+    if not match:
+        return None
+    tail = text[match.end():].strip(' :\t\r\n')
+    if not tail or re.search(r'https?://|\bdoi\b|[“\"][^”\"]+[”\"].*\b(?:19|20)\d{2}\b', tail, re.I):
+        return match.span(1)
+    return None
 
 
 def _first_font_size(paragraph: Paragraph) -> float:
@@ -238,10 +249,16 @@ def classify_regions(paragraphs: list[Paragraph]) -> None:
     nonempty = [p for p in paragraphs if p.text.strip()]
     if not nonempty:
         return
+    bibliography = any(p.normalized.lower().startswith('annotated bibliography') for p in nonempty[:12])
+    def bibliography_entry(p):
+        return (bibliography and len(p.words) <= 90
+                and re.match(r'^[A-Z][\w’\x27-]+(?:,|\s)', p.normalized)
+                and re.search(r'\(\d{4}[a-z]?\)', p.text)
+                and re.search(r'https?://|doi\b', p.text, re.I))
 
     ref_head = None
     for p in nonempty:
-        if p.normalized.lower().strip(" :") in _REF_HEADINGS:
+        if reference_heading_span(p.text) is not None:
             ref_head = p.index
             break
     abstract_head = None
@@ -256,15 +273,25 @@ def classify_regions(paragraphs: list[Paragraph]) -> None:
 
     title_idx = None
     best_score = 0
+    first_prose = next((p.index for p in nonempty if not p.in_table and len(p.words) >= 25
+                        and not p.normalized.lower().startswith('annotated bibliography')
+                        and not bibliography_entry(p)), None)
     for p in nonempty[:12]:
+        # A later section heading or reference entry is not the manuscript title.
+        # Choosing one makes all preceding prose disappear into front matter.
+        if ((first_prose is not None and p.index >= first_prose)
+                or (ref_head is not None and p.index >= ref_head)):
+            break
         key = p.normalized.lower().strip(" :")
         if key in _REF_HEADINGS or key in _ABSTRACT_HEADINGS:
             continue
         text = p.normalized
         words = text.split()
-        if not (1 <= len(words) <= 16):
+        if not (1 <= len(words) <= (50 if text.lower().startswith('annotated bibliography') else 16)):
             continue
         score = 0
+        if text.lower().startswith("annotated bibliography"):
+            score += 5
         style = p.style.lower()
         if "title" in style or style.startswith("heading"):
             score += 3
@@ -317,6 +344,9 @@ def classify_regions(paragraphs: list[Paragraph]) -> None:
         if ref_head is not None and p.index >= ref_head:
             p.region = "references"
             continue
+        if bibliography_entry(p):
+            p.region = 'references'
+            continue
         if abstract_head is not None and p.index == abstract_head:
             p.region = "front_matter"
             continue
@@ -330,6 +360,13 @@ def classify_regions(paragraphs: list[Paragraph]) -> None:
             p.region = "front_matter"
             continue
         p.region = "body"
+
+    from .source_material import previous_letter_start
+    review_start = previous_letter_start(paragraphs)
+    if review_start is not None:
+        for p in paragraphs:
+            if p.index >= review_start:
+                p.region = "reviewer_note"
 
 
 def detect_existing_comments(path: str) -> bool:
@@ -355,7 +392,7 @@ def load_document(path: str, academic_style: str = "auto") -> DocumentModel:
 
     classify_regions(paragraphs)
 
-    full = "\n\n".join(p.text for p in paragraphs if p.text.strip())
+    full = "\n\n".join(p.text for p in paragraphs if p.text.strip() and p.region != 'reviewer_note')
     fp = hashlib.sha1(re.sub(r"\s+", " ", full).strip().encode("utf-8")).hexdigest()
 
     style = academic_style
@@ -378,10 +415,17 @@ def detect_style(text: str, paragraphs: list[Paragraph]) -> str:
     apa_signals = 0
     mla_signals = 0
     low = text.lower()
+    front = [p for p in paragraphs if p.region == "front_matter" and p.text.strip()]
+    course = any(re.search(r"\b(?:[A-Za-z]{2,4}|english)\s*\d{2,4}\b", p.normalized, re.I) for p in front)
+    dates = [p for p in front if re.search(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b", p.text)]
+    if course and dates and all(not _is_centered(p) for p in front):
+        mla_signals += 5
     if re.search(r"\(\s*[A-Z][A-Za-z\-]+(?:\s+et al\.)?,\s*\d{4}", text):
         apa_signals += 3
     if re.search(r"\(\d{4}\)", text):
         apa_signals += 1
+    if re.search(r"\b[A-Z][A-Za-z'\u2019-]+(?:\s+et al\.)?\s*\((?:19|20)\d{2}\)", text):
+        apa_signals += 3
     if re.search(r"^abstract$", low, flags=re.MULTILINE):
         apa_signals += 2
     if "running head" in low:

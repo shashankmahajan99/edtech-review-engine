@@ -603,15 +603,18 @@
         "THESIS STATEMENT"
       ],
       "patterns": [
-        {
-          "observation": "The thesis statement here is a bit general because the main claim about {topic} is not clearly established.",
-          "advice": "Could you mention what you intend to argue and why?",
-          "length": "medium",
-          "intent": "issue",
-          "required_slots": [
-            "topic"
-          ]
-        },
+        {
+          "observation": "The wording {vague} in the thesis leaves part of the argument open to interpretation.",
+          "advice": "Could you name the particular idea or relationship you mean, keeping the position and supporting points already stated?",
+          "length": "medium",
+          "intent": "issue",
+          "required_slots": [
+            "vague"
+          ],
+          "rules": [
+            "thesis_vague"
+          ]
+        },
         {
           "observation": "Your thesis identifies {point} as an important concern, but its relation to {other_point} could be clearer.",
           "advice": "You could combine these ideas into one focused claim.",

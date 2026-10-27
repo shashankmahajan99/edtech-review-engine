@@ -50,6 +50,12 @@ class TestBodyLetter(unittest.TestCase):
     def test_no_signature_returns_empty(self):
         self.assertEqual(body_letter(["A paragraph.", "Another paragraph."]), "")
 
+    def test_informal_salutation_is_part_of_the_reviewer_letter(self):
+        letter = body_letter(["Student prose.", "Hi Taylor,", "You have done a good job here.",
+                              "There are a few areas to focus on.", "Best wishes,", "Mehak K."])
+        self.assertTrue(letter.startswith("Hi Taylor,"))
+        self.assertNotIn("Student prose.", letter)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

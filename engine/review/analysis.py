@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Iterable
 
-from .docmodel import DocumentModel, Paragraph, w
+from .docmodel import DocumentModel, Paragraph, w, reference_heading_span
 from .segmenter import Sentence, content_words, split_sentences
 
 # Canonical ThinkingStorm knowledge-base categories.
@@ -126,7 +126,7 @@ class Block:
         para_start = self.paragraphs[p_start]
         if p_start == p_end:
             s, e = trim_span(para_start.text, local_start, local_end + 1)
-            return (para_start, s, e) if e - s >= 8 else None
+            return (para_start, s, e) if e - s >= 2 else None
         # Sentence straddles a paragraph break: anchor the part that holds most of it.
         tail = len(para_start.text) - local_start
         if tail >= 25:
@@ -144,10 +144,18 @@ def _is_continuation(prev: Paragraph, nxt: Paragraph) -> bool:
     prev_text = prev.text.rstrip()
     if not prev_text:
         return True
+    stripped = nxt.text.lstrip()
+    # A mid-sentence continuation is stronger evidence than paragraph length.
+    # Some source files split a single sentence across several Word paragraphs.
+    if stripped and stripped[0].islower():
+        return True
+    # Missing terminal punctuation does not erase a substantial paragraph's
+    # boundary. Only join short extraction fragments, not whole student ideas.
+    if len(prev.words) > 60:
+        return False
     if prev_text[-1] not in ".!?\"\u201d\u2019)":
         return True
-    stripped = nxt.text.lstrip()
-    return bool(stripped) and stripped[0].islower()
+    return False
 
 
 def build_blocks(model: DocumentModel) -> list[Block]:
@@ -188,7 +196,13 @@ _NARRATIVE_CITE_RE = re.compile(
 _STAT_RE = re.compile(
     r"(?:\d+(?:\.\d+)?\s?%|\b\d[\d,\.]*\s+(?:million|billion|thousand)\b)"
 )
-_QUOTE_RE = re.compile(r"[\u201c\"][^\u201d\"]{15,}[\u201d\"]")
+_QUOTE_RE = re.compile(r'“[^“”]*”|"[^"\n]*"')
+
+
+def quoted_passages(text: str):
+    # Consume short titles too, then filter them out. Starting the regex only
+    # at long quotations can pair a title's closing mark with the next opener.
+    return (match for match in _QUOTE_RE.finditer(text) if len(match.group()[1:-1].split()) >= 8)
 
 _TRANSITIONS = {
     "however", "although", "though", "while", "whereas", "nevertheless",
@@ -320,7 +334,7 @@ def _evidence_in(sentence_text: str) -> bool:
     return bool(
         _citation_spans(sentence_text)
         or _STAT_RE.search(sentence_text)
-        or _QUOTE_RE.search(sentence_text)
+        or next(quoted_passages(sentence_text), None)
     )
 
 
@@ -371,8 +385,48 @@ def _is_title_case(text: str) -> bool:
     return True
 
 
+def _is_center_aligned(paragraph) -> bool:
+    ppr = paragraph.element.find(w("pPr"))
+    if ppr is None:
+        return False
+    jc = ppr.find(w("jc"))
+    return jc is not None and jc.get(w("val")) in {"center", "both"}
+
+
+_FORMULAIC_OPINION = re.compile(
+    r"\b(?:in my (?:interpretation|view|perspective|opinion)|"
+    r"my (?:portrayal|view|perspective) is|i believe)\b",
+    re.I,
+)
+
+_COMMON_MISSPELLINGS = {
+    "zues": "Zeus",
+    "kan academy": "Khan Academy",
+    "alot": "a lot",
+    "recieve": "receive",
+    "seperate": "separate",
+    "definately": "definitely",
+    "occured": "occurred",
+    "goverment": "government",
+    "enviroment": "environment",
+    "accomodate": "accommodate",
+    "untill": "until",
+    "thier": "their",
+    "commited": "committed",
+    "begining": "beginning",
+    "sucessful": "successful",
+    "independant": "independent",
+    "publically": "publicly",
+    "recomend": "recommend",
+}
+
+
 def front_matter_rules(model: DocumentModel) -> list[Finding]:
     out: list[Finding] = []
+    # The front of a clinical evaluation contains patient identifiers and
+    # assessment dates, not an essay's student title-page block.
+    if getattr(model, "_essay_type", "") == "report":
+        return out
     fm = [p for p in model.front_matter if p.text.strip()]
     if not fm:
         return out
@@ -419,6 +473,14 @@ def front_matter_rules(model: DocumentModel) -> list[Finding]:
             anchor = fm[0]
             s, e = trim_span(anchor.text, 0, len(anchor.text))
             out.append(Finding("mla_header_missing", MLA, anchor, s, e, {}, 74))
+
+        # MLA headings are flush left; a centered name block reads as a title
+        # page. Only flag when every heading line is centered.
+        heading_lines = fm[:4]
+        if len(heading_lines) >= 3 and all(_is_center_aligned(p) for p in heading_lines):
+            anchor = heading_lines[1] if len(heading_lines) > 1 else heading_lines[0]
+            s, e = trim_span(anchor.text, 0, len(anchor.text))
+            out.append(Finding("mla_heading_alignment", MLA, anchor, s, e, {}, 62))
     else:
         has_instructor = any(
             re.match(r"^(?:Mr|Mrs|Ms|Dr|Professor|Prof)\.?\s", p.normalized) for p in fm
@@ -549,7 +611,7 @@ def thesis_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
             out.append(Finding("thesis_missing", THESIS, *mapped, {}, 88))
         return out
 
-    if vague or too_long:
+    if vague:
         mapped = best_block.span_in_paragraph(best_sent.start, best_sent.end)
         if mapped:
             out.append(Finding(
@@ -557,6 +619,10 @@ def thesis_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
                 {"vague": vague[:3], "words": len(best_sent.words),
                  "thesis": best_sent.text.strip()}, 82,
             ))
+    elif too_long:
+        mapped = best_block.span_in_paragraph(best_sent.start, best_sent.end)
+        if mapped:
+            out.append(Finding('thesis_long', THESIS, *mapped, {'words': len(best_sent.words)}, 82))
     elif not previews and best_score <= 8:
         mapped = best_block.span_in_paragraph(best_sent.start, best_sent.end)
         if mapped:
@@ -589,14 +655,42 @@ def thesis_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
 
 def body_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
     out: list[Finding] = []
+    genre = getattr(model, "_essay_type", "academic")
+    essay_structure = genre not in {"bibliography", "report", "reflection"}
     sourced = sum(1 for b in blocks if _citation_spans(b.text) or _STAT_RE.search(b.text))
     essay_has_sources = sourced >= 2
+    formulaic_total = sum(len(_FORMULAIC_OPINION.findall(p.text)) for p in model.body_paragraphs)
 
     for bi, block in enumerate(blocks):
         sentences = block.sentences()
         if not sentences:
             continue
         low = block.text.lower()
+
+        # --- repeated opinion formula, short paragraph, known misspelling ---
+        for para in block.paragraphs:
+            text = para.text
+            if formulaic_total >= 3:
+                match = _FORMULAIC_OPINION.search(text)
+                if match:
+                    out.append(Finding(
+                        "formulaic_opinion", CLARITY, para, match.start(), match.end(),
+                        {"phrase": match.group(0).lower(), "count": formulaic_total}, 47,
+                    ))
+            words = len(para.words)
+            if 5 <= words <= 25 and para.region == "body":
+                s, e = trim_span(text, 0, len(text))
+                out.append(Finding("paragraph_short", ORGANISATION, para, s, e,
+                                   {"words": words}, 45))
+            for wrong, right in _COMMON_MISSPELLINGS.items():
+                pattern = (re.compile(rf"(?<!\w){re.escape(wrong)}(?!\w)", re.I)
+                           if " " not in wrong else re.compile(re.escape(wrong), re.I))
+                hit = pattern.search(text)
+                if hit:
+                    out.append(Finding("common_misspelling", CLARITY, para,
+                                       hit.start(), hit.end(),
+                                       {"wrong": hit.group(0), "right": right}, 58))
+                    break
 
         # --- evidence without analysis ------------------------------------
         for j, sinfo in enumerate(sentences):
@@ -632,17 +726,29 @@ def body_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
                     ))
                     break
 
-        # --- quoted passage without a page citation (MLA) -----------------
+        # --- quotation from a source known to have numbered pages ----------
         if model.style == "mla":
+            paginated = []
+            for reference in model.references:
+                if re.search(r'\bpp?\.\s*\d+|\)\s*[,.:]\s*\d+\s*[-–]\s*\d+', reference.text):
+                    key = reference.normalized.split(',', 1)[0].split('.', 1)[0].strip()
+                    if len(key) >= 2 and re.search(r'(?<!\w)' + re.escape(key) + r'(?!\w)', block.text, re.I):
+                        paginated.append(key)
+            # A web address or quotation alone does not establish pagination.
+            # MLA does not require an invented number for an unpaginated source.
             for j, sinfo in enumerate(sentences):
-                for qm in re.finditer(r"[\u201c\"]([^\u201d\"]{40,})[\u201d\"]", sinfo.text):
-                    inner = qm.group(1)
-                    if len(inner.split()) < 10 and "." not in inner:
+                if not paginated:
+                    break
+                for qm in quoted_passages(sinfo.text):
+                    attribution = sinfo.text[:qm.start()] + ' ' + sinfo.text[qm.end():]
+                    local_sources = [key for key in paginated if re.search(
+                        r'(?<!\w)' + re.escape(key) + r'(?!\w)', attribution, re.I)]
+                    if len(local_sources) != 1:
                         continue
                     window = sinfo.text
                     if j + 1 < len(sentences):
                         window += " " + sentences[j + 1].text
-                    if re.search(r"\(\s*[A-Za-z][^)]*\d+[^)]*\)", window):
+                    if re.search(r"\([^)]*\d+[^)]*\)", window):
                         break
                     if re.search(r"\b[A-Z][a-z]+\s+\d{1,3}\b", window):
                         break
@@ -650,7 +756,7 @@ def body_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
                     end = sinfo.start + qm.end()
                     mapped = block.span_in_paragraph(start, end)
                     if mapped:
-                        out.append(Finding("quote_no_page", MLA, *mapped, {}, 60))
+                        out.append(Finding("quote_no_page", MLA, *mapped, {'source': local_sources[0]}, 60))
                     break
                 else:
                     continue
@@ -659,7 +765,7 @@ def body_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
         # --- topic sentence opens with evidence ---------------------------
         first = sentences[0]
         first_low = first.text.lower().strip()
-        if (first_low.startswith("according to") or _citation_spans(first.text)
+        if essay_structure and (first_low.startswith("according to") or _citation_spans(first.text)
                 or _STAT_RE.search(first.text)) and len(sentences) >= 2:
             mapped = block.span_in_paragraph(first.start, first.end)
             if mapped:
@@ -667,14 +773,18 @@ def body_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
 
         # --- overlong paragraph -------------------------------------------
         if len(block.text.split()) > 150 and len(sentences) >= 6:
-            mapped = block.span_in_paragraph(sentences[0].start, sentences[0].end)
+            # Anchor the sentence that actually makes the paragraph long. The
+            # midpoint can land on a short demonstrative sentence that other
+            # rules also quote, which blocks a second comment on the paragraph.
+            middle = max(sentences, key=lambda s: len(s.words))
+            mapped = block.span_in_paragraph(*sentence_span(middle))
             if mapped:
                 out.append(Finding("paragraph_overlong", ORGANISATION, *mapped,
                                    {"words": len(block.text.split())}, 52))
 
         # --- a list of studies without synthesis --------------------------
         sources = _sources(block.text)
-        if len(sources) >= 2 and not _has_any(
+        if genre != "bibliography" and len(sources) >= 2 and not _has_any(
             low, ("similarly", "by contrast", "both", "together", "whereas",
                   "in comparison", "compared", "combined")
         ):
@@ -685,7 +795,7 @@ def body_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
                                    {"sources": sources[:3]}, 62))
 
         # --- abrupt topic shift between blocks ----------------------------
-        if 0 < bi < len(blocks) - 1:
+        if essay_structure and 0 < bi < len(blocks) - 1:
             prev_sents = blocks[bi - 1].sentences()
             first = sentences[0]
             first_low = first.text.lower().strip()
@@ -748,7 +858,11 @@ def body_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
             m = re.match(r"^(?:this|these)\s+(?:shows|proves|means|suggests|"
                          r"demonstrates|creates|leads|helps|makes)\b", sinfo.text.strip(), re.I)
             if m and len(sinfo.words) > 6:
-                mapped = block.span_in_paragraph(sinfo.start, sinfo.end)
+                # Anchor the demonstrative phrase, not the whole sentence: a
+                # sentence-wide span collides with sentence-level rules and
+                # prevents a second, distinct comment on the same paragraph.
+                mapped = block.span_in_paragraph(sinfo.start + m.start(),
+                                                 sinfo.start + m.end())
                 if mapped:
                     out.append(Finding("vague_pronoun", CLARITY, *mapped, {}, 52))
                 break
@@ -808,30 +922,27 @@ def body_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
                                        {"count": len(passives)}, 47))
 
         # --- paragraph coverage: opens without a claim ---------------------
-        if len(sentences) >= 4 and bi < len(blocks) - 1:
+        if essay_structure and len(sentences) >= 4 and 0 < bi < len(blocks) - 1:
             first_low = sentences[0].text.lower().strip()
             starts_with_transition = any(
                 first_low.startswith(t + " ") or first_low.startswith(t + ",")
                 for t in _TRANSITIONS
             )
-            if not starts_with_transition and not _MODAL_CLAIM.search(first_low) \
+            fact_opening = re.match(r'^(?:there (?:is|are) \d|(?:in|during) (?:the )?\d{4}\b|.{1,50}\b(?:was born|was published|is located)\b)', first_low)
+            if fact_opening and not starts_with_transition and not _MODAL_CLAIM.search(first_low) \
                     and not _has_any(first_low, _CLAIM_MARKERS):
                 mapped = block.span_in_paragraph(sentences[0].start, sentences[0].end)
                 if mapped:
                     out.append(Finding("para_no_claim", TOPIC, *mapped, {}, 49))
 
-        if (essay_has_sources and bi < len(blocks) - 1 and words >= 55
+        if (essay_structure and essay_has_sources and bi < len(blocks) - 1 and words >= 55
                 and not _citation_spans(block.text) and not _STAT_RE.search(block.text)):
             mapped = block.span_in_paragraph(sentences[0].start, sentences[0].end)
             if mapped:
                 out.append(Finding("para_unsupported", EVIDENCE, *mapped, {}, 50))
 
-        # --- paragraph coverage: opening claim abandoned by the close ------
-        if (bi < len(blocks) - 1 and words >= 70 and len(sentences) >= 4
-                and _jaccard(sentences[0].text, sentences[-1].text) < 0.06):
-            mapped = block.span_in_paragraph(sentences[0].start, sentences[0].end)
-            if mapped:
-                out.append(Finding("para_drift", ORGANISATION, *mapped, {}, 48))
+        # Low vocabulary overlap between an opening and ending does not by
+        # itself establish paragraph drift. That requires a semantic review.
 
     return out
 
@@ -912,9 +1023,10 @@ _SVA_PATTERNS = [
     (re.compile(r"(?:(?<=^)|(?<=[.!?]))\s*(?:[A-Z][\w'\u2019-]*\s+)?[\w'\u2019-]+\s+and\s+[\w'\u2019-]+\s+(?:helps|has|is|was|does|shows|makes)\b"), "compound"),
 ]
 
-_SPACING_PATTERNS = [    (re.compile(r"\s+[,;:](?!\d)"), "space_before_punct"),
+_SPACING_PATTERNS = [    (re.compile(r"(?<=\S)[ \t]+[.,;:](?![\d.])"), "space_before_punct"),
     (re.compile(r"\b\w+\.\s*\."), "double_period"),
     (re.compile(r"[,;:][A-Za-z]"), "missing_space_after_punct"),
+    (re.compile(r"(?<=[a-z])[.!?](?=[A-Z])"), "missing_space_after_punct"),
     (re.compile(r"\)\s+\."), "citation_period_space"),
     (re.compile(r"(?<=\S) {2,}(?=\S)"), "double_space"),
 ]
@@ -991,6 +1103,8 @@ def mechanics_rules(model: DocumentModel) -> list[Finding]:
         if p.region not in {"body", "abstract", "front_matter", "references"}:
             continue
         text = p.text
+        protected_spacing = [m.span() for m in re.finditer(
+            r'https?://\S+|\b(?:Ph|Ed|B|M)\.(?:D|Ed|A|S|Phil|Sc)\.?', text)]
 
         for pat, kind in _SVA_PATTERNS:
             m = pat.search(text)
@@ -1006,6 +1120,8 @@ def mechanics_rules(model: DocumentModel) -> list[Finding]:
 
         for pat, rule in _SPACING_PATTERNS:
             for m in pat.finditer(text):
+                if any(start <= m.start() and m.end() <= end for start, end in protected_spacing):
+                    continue
                 s, e = snippet_around(text, m.start(), 60)
                 if e - s < 6:
                     continue
@@ -1043,6 +1159,10 @@ def mechanics_rules(model: DocumentModel) -> list[Finding]:
                 examples.append(fragment)
         out.append(Finding("typo_cluster", PUNCT, p, s, e,
                            {"examples": examples[:5], "count": len(typo_examples)}, 68))
+        for para, start, end, rule, fragment in typo_examples:
+            if rule in {"space_before_punct", "citation_period_space", "double_period", "missing_space_after_punct"}:
+                out.append(Finding(rule, PUNCT, para, start, end,
+                                   {"specimen": fragment}, 65))
     elif len(typo_examples) == 1:
         p, s, e, rule, _frag = typo_examples[0]
         # A lone double space is noise; a space before punctuation is a real edit.
@@ -1074,8 +1194,13 @@ def _range_is_italic(paragraph: Paragraph, start: int, end: int) -> bool:
             rpr = node.run.find(w("rPr"))
             if rpr is None:
                 continue
-            if rpr.find(w("i")) is not None or rpr.find(w("iCs")) is not None:
+            flag = rpr.find(w('i'))
+            if flag is None:
+                flag = rpr.find(w('iCs'))
+            if flag is not None and flag.get(w('val'), '1').lower() not in {'0', 'false', 'off'}:
                 italic += seg
+                continue
+            if flag is not None:
                 continue
             style = rpr.find(w("rStyle"))
             if style is not None and (style.get(w("val")) or "").lower() in {
@@ -1088,8 +1213,7 @@ def _range_is_italic(paragraph: Paragraph, start: int, end: int) -> bool:
 def reference_rules(model: DocumentModel) -> list[Finding]:
     out: list[Finding] = []
     refs = [p for p in model.references if p.text.strip()]
-    heading = next((p for p in refs if p.normalized.lower().strip(" :") in
-                    {"works cited", "references", "bibliography", "work cited"}), None)
+    heading = next((p for p in refs if reference_heading_span(p.text)), None)
 
     if heading is not None and model.style == "mla":
         ppr = heading.element.find(w("pPr"))
@@ -1106,11 +1230,19 @@ def reference_rules(model: DocumentModel) -> list[Finding]:
             out.append(Finding("works_cited_top_margin", MLA, heading, s, e,
                                {"before": before}, 72))
 
-    entries = [p for p in refs if p is not heading and len(p.words) >= 6]
+    entries = [p for p in refs if p is not heading and len(p.words) >= 6
+               and not re.match(r'^\s*https?://', p.text)]
     for p in entries:
         text = p.text
+        stripped = text.rstrip()
+        if stripped and stripped[-1] not in ".!?":
+            start = stripped.rfind(" ", 0, len(stripped)) + 1
+            s, e = trim_span(text, start, len(stripped))
+            out.append(Finding("reference_missing_period",
+                               MLA if model.style == "mla" else APA, p, s, e, {}, 56))
         if model.style == "mla":
-            m = re.search(r"\bWww\.[^\s,]+", text, re.I)
+            # A normal https://www... location is not a container-title error.
+            m = re.search(r"(?<![/\w])Www\.[^\s,]+", text, re.I)
             if m:
                 s, e = trim_span(text, m.start(), m.end())
                 out.append(Finding("mla_raw_url_container", MLA, p, s, e, {}, 68))
@@ -1245,16 +1377,24 @@ def statement_rules(model: DocumentModel, blocks: list[Block]) -> list[Finding]:
 
 
 def _essay_type(model: DocumentModel) -> str:
-    text = " ".join(p.text for p in model.body_paragraphs).lower()
+    opening = model.full_text[:1200].lower()
+    if "annotated bibliography" in opening:
+        return "bibliography"
+    if re.search(r"\boccupational therapy evaluation\b|\bevaluation report\b", opening):
+        return "report"
+    raw_text = " ".join(p.text for p in model.body_paragraphs)
+    text = raw_text.lower()
+    if re.search(r"\bweek (?:one|1)\b", text) and re.search(r"\bweek (?:two|2)\b", text):
+        return "reflection"
     if sum(text.count(k) for k in ("ethos", "pathos", "logos")) >= 2:
         return "rhetorical"
-    if model.style == "apa" or len(_sources(text)) >= 3:
+    if model.style == "apa" or len(_sources(raw_text)) >= 3:
         return "research"
     first_person = len(re.findall(r"\b(?:i|my|me|i'm|i've)\b", text))
     admissions = len(re.findall(
         r"\b(?:admission|program|programme|university|graduate|master'?s|ph\.?d|"
         r"school of|applicant|candidate)\b", text))
-    if first_person >= 5 and admissions >= 2 and len(_sources(text)) < 2:
+    if first_person >= 5 and admissions >= 2 and len(_sources(raw_text)) < 2:
         return "statement"
     if re.search(r"\b(should|must|ought|need to)\b", text) and re.search(r"\b(however|although)\b", text):
         return "argumentative"
@@ -1271,18 +1411,23 @@ def analyze(model: DocumentModel) -> AnalysisResult:
     findings += abstract_rules(model)
     if essay_type == "statement":
         findings += statement_rules(model, blocks)
-    else:
+    elif essay_type not in {"bibliography", "report", "reflection"}:
         findings += thesis_rules(model, blocks)
         findings += counterargument_rules(model, blocks)
     findings += body_rules(model, blocks)
-    findings += conclusion_rules(model, blocks)
+    if essay_type not in {"bibliography", "report", "reflection"}:
+        findings += conclusion_rules(model, blocks)
     findings += mechanics_rules(model)
     findings += reference_rules(model)
+    from . import pedagogy
+    findings += pedagogy.rhetoric(model, blocks)
+    findings += pedagogy.mechanics(model, blocks)
+    findings += pedagogy.formatting(model)
 
     seen: set[tuple] = set()
     unique: list[Finding] = []
     for f in findings:
-        if f.end - f.start < 3:
+        if f.end - f.start < 2:
             continue
         k = f.key()
         if k in seen:

@@ -97,7 +97,7 @@ _VERDICTS = {
     "apa_database": "A database name is included where the DOI is sufficient.",
     "implausible_year": "A reference contains an implausible publication year.",
     "org_name_mismatch": "An organisation is named inconsistently between text and references.",
-    "quote_no_page": "A direct quotation lacks a page reference.",
+    "quote_no_page": "A quotation from a source listed with numbered pages lacks a locator.",
     "statement_cliche_opener": "The opening uses the standard lifelong-passion formula.",
     "statement_generic_claim": "Generic programme praise stands in for a specific reason.",
     "statement_no_specific_fit": "No specific course, lab, or faculty member is named.",
@@ -143,7 +143,7 @@ _ACTIONS = {
     "statement_no_specific_fit": "Name two concrete courses, labs, or faculty and connect them to your work.",
     "statement_generic_claim": "Replace generic praise with a concrete programme detail.",
     "counterargument_missing": "Add and answer the strongest objection to your claim.",
-    "quote_no_page": "Add the page number to the quotation.",
+    "quote_no_page": "Check the cited edition and add its page locator to the quotation.",
     "para_unsupported": "Add a source to the paragraph that argues without one.",
     "para_drift": "Return to the opening claim at the end of the paragraph.",
     "para_filler": "Cut the repeated filler word.",
@@ -392,19 +392,24 @@ def _build_line_edits(model: DocumentModel, result: AnalysisResult,
 
 def build_review(model: DocumentModel, result: AnalysisResult, source_text: str, *,
                  mode: str = "academic", institution: str = "",
-                 student_name: str = "", reviewer_name: str = "Raunak Banga") -> dict:
+                 student_name: str = "", reviewer_name: str = "Raunak Banga",
+                 delivered_endnote: list[str] | None = None) -> dict:
     """Return a DeepReviewPayload-shaped dict computed only from findings."""
     review_mode = "admissions" if mode == "admissions" else "academic"
     scores = _score_pillars(result, review_mode)
     total = sum(v["score"] for v in scores.values())
-    endnote = compose_endnote(model, result, reviewer_name=reviewer_name,
-                              student_name=student_name or None)
+    if delivered_endnote is None:
+        endnote = compose_endnote(model, result, reviewer_name=reviewer_name,
+                                  student_name=student_name or None)
+        letter = endnote.paragraphs
+    else:
+        letter = delivered_endnote
     return {
         "overall_score": total,
         "category_scores": scores,
         "executive_summary": _summary(model, result, scores, review_mode),
         "top_action_items": _actions(result),
         "line_edits": _build_line_edits(model, result, source_text),
-        "tutor_overview_letter": "\n\n".join(endnote.paragraphs),
+        "tutor_overview_letter": "\n\n".join(letter),
         "institution": institution,
     }

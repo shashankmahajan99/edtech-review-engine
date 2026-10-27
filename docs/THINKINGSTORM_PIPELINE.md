@@ -1,6 +1,10 @@
 # ThinkingStorm Deliverable Pipeline (v2)
 
-Deterministic, offline review engine that turns a raw student `.docx` into the
+The current fast deployment combines the offline reviewer with guarded local
+prose editing. See [FEEDBACK_HUMANIZER.md](FEEDBACK_HUMANIZER.md) for operation,
+measured limits and the explicit runtime profile that supersedes Strata defaults.
+
+Local review engine that turns a raw student `.docx` into the
 same shape of deliverable the reviewer produces by hand:
 
 `<original filename>_commented.docx`
@@ -8,8 +12,14 @@ same shape of deliverable the reviewer produces by hand:
 - ALL-CAPS knowledge-base link at the start of each labelled comment,
 - a native Word endnote letter in red Times New Roman 12 pt, double spaced.
 
-**No model calls, no network, no tokens.** The same input always produces the
-same review, on any machine with Python and `python-docx`.
+The configured local-model backend reads the draft, retrieves human review
+examples, audits its proposed comments, and writes a separate closing letter.
+See [local model setup and Strata support](LOCAL_THINKINGSTORM_REVIEWER.md).
+The same writer and Word release gate serve both backends.
+
+The sections below describe the retained **rules backend**, which needs no model
+or network and remains available with `--backend rules`. Its reproducible output
+does not apply to model generation.
 
 ---
 
@@ -19,7 +29,7 @@ same review, on any machine with Python and `python-docx`.
 | --- | --- |
 | Anchored `p[:80]` truncations, sometimes mid-word | Sentence segmentation with exact character spans; anchors always fall on word boundaries |
 | 4-6 canned comments reused across every document | 40+ evidence rules, 3-4 phrasings per rule, chosen from the document fingerprint |
-| One template endnote for every student | Three domain paragraphs composed from the findings, with per-document phrasing |
+| One template endnote for every student | Up to three revision areas grounded in delivered comments, with traceable source passages |
 | No verification before download | A release gate re-opens the file and rejects it on any inconsistency |
 | No way to run in bulk | CLI, batch mode, and a zero-token inbox watcher |
 
@@ -36,7 +46,7 @@ raw.docx
   ├─ analysis      logical blocks → 40+ high-precision findings
   ├─ selection     budget, category caps, overlap checks, merged labels
   ├─ persona       human-register comment text (deterministic variant choice)
-  ├─ endnote       three personalised domain paragraphs
+  ├─ endnote       supported revision areas from delivered margin comments
   ├─ writer        OpenXML: run splitting, comments part, endnote part
   └─ validate      RELEASE GATE — any failure deletes the deliverable
 ```
@@ -89,21 +99,23 @@ Structural
 - no overlapping ranges, no duplicate ids.
 
 Content
-- 5-22 comments per review;
+- 1–120 supported comments per review; page coverage is reported separately;
 - 6-95 words each, terminal punctuation, no double spaces;
 - the anchored text equals the quote the reviewer selected;
 - every hyperlink resolves to an allow-listed
   `https://knowledge.thinkingstorm.com/` article;
 - no comment repeats its own category label.
 
-Style / AI-detector proxies
+Editorial style checks
 - no banned LLM vocabulary (`delve`, `tapestry`, `furthermore`, ...);
-- sentence-length burstiness inside the human band;
-- no repeated 5-grams across comments;
-- varied sentence openers.
+- sentence-length, repeated-phrase and opener metrics are reported as warnings;
+- these statistics do not measure authorship or predict a detector score;
+- complete diagnosis/advice pairs are retained regardless of their length.
 
 Endnote
-- greeting, three domain headings, 120+ words, reviewer signature;
+- greeting, one to three supported domain headings, reviewer signature;
+- minimum length scales with the number of supported areas (60/90/120 words);
+- every priority records its rule, paragraph and exact selected quote in the sidecar;
 - every run Times New Roman, 12 pt, `FF0000`, 480-twip double spacing.
 
 A rejected manuscript produces no deliverable. The reason is written to the
@@ -135,8 +147,11 @@ python -m engine.review.cli audit draft_commented.docx
 
 `audit` prints comment count, per-comment lengths, sentence mean/variance,
 5-gram repetition, opener variety, banned-phrase hits, and the endnote's own
-metrics, then returns PASS or REVIEW. It is the quickest way to see *why* a
-deliverable is unlikely to trip a detector — or which knob to adjust if it is.
+metrics, then returns PASS or REVIEW for editorial inspection. It does not
+estimate a third-party detector result or establish whether prose is human-written.
+
+For the multi-pass review changes and corpus replay command, see
+[THINKINGSTORM_REVIEW_QUALITY.md](THINKINGSTORM_REVIEW_QUALITY.md).
 
 Each successful run writes:
 
@@ -170,8 +185,8 @@ watcher never double-reviews a submission. Create `inbox/STOP` to stop it.
 On Windows:
 
 ```powershell
-.\start_ts_watcher.ps1        # background daemon + log tail
-.\stop_ts_watcher.ps1
+.\scripts\start_ts_watcher.ps1        # background daemon + log tail
+.\scripts\stop_ts_watcher.ps1
 ```
 
 ---
@@ -269,7 +284,7 @@ separate mode. The page surfaces the server's error text verbatim.
 `/api/thinkingstorm/execute` (the Reviewer Studio) returns the comments
 (`category`, `target_text`, `comment_text`, `link_url`, `paragraph`), the three
 endnote domains, the rubric, an executive summary, coverage counts, the QA report
-URL and a `warning` when a fallback was used.
+URL, `review_quality` and an explicit warning when coverage needs review.
 
 `/submit` (public intake) runs the same pipeline and produces all three
 artifacts from one analysis:
@@ -285,9 +300,10 @@ from text any more; the report carries the rubric and the summary.
 
 ### Full reviews
 
-The pipeline defaults to `comprehensive=True`: roughly one note per 55 words
-(cap 34), up to three notes on a substantial paragraph, and a coverage pass that
-ensures every body paragraph containing a detected issue receives a comment.
+The pipeline defaults to `comprehensive=True`: a page budget of four comments,
+up to 120 per document. Selection reserves a supported note for each logical
+body block before filling the remaining budget. It does not invent findings
+to reach a count. `review_quality` records any undercovered pages.
 `select_comments(..., comprehensive=False)` restores the lighter sampler for
 callers that want it.
 
@@ -315,9 +331,10 @@ budget.
 | legacy `.doc` | **HTTP 400** asking for `.docx` |
 | under 80 words | **HTTP 400** naming the word count |
 
-If the release gate declines a readable manuscript, the Studio falls back to the
-direct commenter and returns `warning` in the JSON instead of an error, so a
-valid draft never dead-ends. The page shows the server's `detail` message rather
+If document validation fails, the Studio returns HTTP 422. It does not bypass
+that refusal through the legacy generator. If document checks pass but coverage
+or developmental depth falls short, the response has `status: needs_review`,
+records that status in the database and displays a coverage warning. The page shows the server's `detail` message rather
 than a bare "Unprocessable Entity".
 
 ---

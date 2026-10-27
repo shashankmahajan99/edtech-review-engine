@@ -112,8 +112,7 @@
    "level": "higher_order",
    "status": "mapped",
    "rules": [
-    "paragraph_overlong",
-    "para_drift"
+    "paragraph_overlong"
    ],
    "reason": ""
   },

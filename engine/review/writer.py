@@ -26,6 +26,7 @@ from pathlib import Path
 from lxml import etree
 
 from .docmodel import DocumentModel, W_NS
+from .letter_format import is_endnote_heading
 
 R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 PKG_REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
@@ -411,7 +412,7 @@ def _build_endnotes(root, paragraphs: list[str], reviewer_name: str):
     for idx, text in enumerate(paragraphs):
         bold = (
             idx == 0
-            or text.endswith(":")
+            or is_endnote_heading(text)
             or text.strip().lower() == reviewer_name.lower()
             or text.startswith("Dear ")
         )

@@ -320,6 +320,16 @@ class ReviewProcessor:
 
     def generate_html_report(self, review_data: Dict[str, Any], output_path: str):
         """Generates a responsive, branded HTML Executive Rubric Report."""
+        from html import escape
+        def escaped(value):
+            if isinstance(value, str):
+                return escape(value)
+            if isinstance(value, dict):
+                return {key: escaped(item) for key, item in value.items()}
+            if isinstance(value, list):
+                return [escaped(item) for item in value]
+            return value
+        review_data = escaped(review_data)
         cats = review_data.get("category_scores", {})
         cat_rows = "".join([
             f"""<tr>

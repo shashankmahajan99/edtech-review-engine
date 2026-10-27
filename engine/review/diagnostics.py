@@ -72,6 +72,8 @@ def _emitted_rules() -> set[str]:
     import re
 
     src = (ROOT / "engine" / "review" / "analysis.py").read_text(encoding="utf-8")
-    rules = set(re.findall(r'Finding\(\s*"([a-z_]+)"', src))
+    rules = set(re.findall(r'''Finding\(\s*["']([a-z_]+)["']''', src))
+    pedagogy = (ROOT / 'engine' / 'review' / 'pedagogy.py').read_text(encoding='utf-8')
+    rules |= set(re.findall(r"_add\(out, '([a-z_]+)'", pedagogy))
     rules |= {"conclusion_and_fragments", "conclusion_and_punctuation", "thesis_and_grammar"}
     return rules

@@ -40,7 +40,7 @@ def _fingerprint(path: Path) -> str:
 
 
 def process_once(inbox: Path, outbox: Path, reviewer: str = "Raunak Banga",
-                 initials: str = "RB", style: str = "auto") -> list[dict]:
+                 initials: str = "RB", style: str = "auto", feedback_rewriter=None) -> list[dict]:
     """Review every new .docx in the inbox once.  Returns per-file results."""
     inbox.mkdir(parents=True, exist_ok=True)
     outbox.mkdir(parents=True, exist_ok=True)
@@ -60,13 +60,15 @@ def process_once(inbox: Path, outbox: Path, reviewer: str = "Raunak Banga",
             result = review_document(
                 path, output_dir=outbox, reviewer_name=reviewer,
                 reviewer_initials=initials, academic_style=style,
+                feedback_rewriter=feedback_rewriter,
             )
             done_dir.mkdir(exist_ok=True)
             shutil.move(str(path), str(done_dir / path.name))
             ledger[str(path.resolve())] = key
             results.append({
                 "input": path.name,
-                "status": "ok",
+                "status": "needs_review" if result.quality.get('needs_review') else "ok",
+                "review_quality": result.quality,
                 "output": Path(result.output_path).name,
                 "report": Path(result.report_path).name,
                 "comments": len(result.comments),
@@ -98,7 +100,7 @@ def process_once(inbox: Path, outbox: Path, reviewer: str = "Raunak Banga",
 
 def run_watcher(inbox: Path, outbox: Path, interval: int = 10,
                 reviewer: str = "Raunak Banga", initials: str = "RB",
-                style: str = "auto", once: bool = False) -> None:
+                style: str = "auto", once: bool = False, feedback_rewriter=None) -> None:
     inbox.mkdir(parents=True, exist_ok=True)
     outbox.mkdir(parents=True, exist_ok=True)
     print(f"[watcher] inbox={inbox} outbox={outbox} interval={interval}s")
@@ -106,10 +108,10 @@ def run_watcher(inbox: Path, outbox: Path, interval: int = 10,
         if (inbox / STOP_FILE).exists():
             print("[watcher] STOP file found; exiting")
             return
-        results = process_once(inbox, outbox, reviewer, initials, style)
+        results = process_once(inbox, outbox, reviewer, initials, style, feedback_rewriter)
         for item in results:
-            if item["status"] == "ok":
-                print(f"[watcher] {item['input']} -> {item['output']} "
+            if item["status"] in {"ok", "needs_review"}:
+                print(f"[watcher] {item['status'].upper()} {item['input']} -> {item['output']} "
                       f"({item['comments']} comments, {item['seconds']}s)")
             else:
                 print(f"[watcher] {item['input']} REJECTED: {item.get('error')}")
