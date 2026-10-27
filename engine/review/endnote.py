@@ -1,70 +1,149 @@
-"""Personalised three-domain endnote letter synthesis.
+"""Closing letters grounded in the comments actually delivered.
 
-The exemplar letters are 190-250 words, thank the student, name three domains,
-and each domain body does three things: says what the draft already does, names
-the specific gap, and gives one concrete revision.  This module reproduces that
-shape from the same findings that drive the comments, so the letter can never
-contradict the margin notes.
-
-Every domain has several phrasings; the variant is chosen from the document
-fingerprint so two submissions never receive the same letter text.
+The reviewer corpus supplies the letter shape: greeting, named revision areas,
+concrete next steps and a signature. Never invent praise or extra revision
+areas to fill a template.
 """
 from __future__ import annotations
 
 import hashlib
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .analysis import (
     ABSTRACT, ANALYSIS, APA, CLARITY, CONCLUSION, COUNTER, EVIDENCE, FRAGMENTS,
     INFORMAL, INTRO, MLA, ORGANISATION, PUNCT, STATISTICS, SVA, THESIS, TOPIC,
-    TRANSITION, AnalysisResult, Finding,
+    TRANSITION, AnalysisResult,
 )
 from .docmodel import DocumentModel
-
-DOMAIN_SETS = {
-    "argumentative": [
-        "Thesis and Main Argument",
-        "Evidence and Analysis",
-        "Structure and Synthesis",
-    ],
-    "research": [
-        "Thesis and overall focus",
-        "Evidence and analysis",
-        "Conclusion and synthesis",
-    ],
-    "rhetorical": [
-        "Introduction and Assertion of Thesis",
-        "Analysis and Evidence",
-        "Clarity and Proofreading",
-    ],
-    "statement": [
-        "Narrative and Opening",
-        "Specificity and Fit",
-        "Style and Mechanics",
-    ],
-    "academic": [
-        "Thesis and Main Argument",
-        "Evidence and Analysis",
-        "Structure and Synthesis",
-    ],
-}
-
-OPENERS = [
-    "Thank you for submitting your paper. There are some suggestions that may help improve the quality of the paper:",
-    "Thank you for submitting your draft. Please pay attention to the following domains:",
-    "Thank you for submitting your paper. You need to focus on:",
-    "Thank you for submitting your draft. Here is what I would work on first:",
-    "Thank you for sharing this draft. These are the areas I would focus on:",
-]
-
-CLOSERS = [
-    "I hope this feedback is helpful.",
-    "I hope these suggestions help as you revise.",
-    "I hope you find this useful when you revise.",
-]
+from .persona import compose_all
+from .selection import SelectedComment, select_comments
+from .endnote_moves import PRIORITY_PLANS
 
 SIGNOFF = "All the best."
+
+_GROUPS = [
+    ("Thesis and overall focus", {THESIS, INTRO}),
+    ("Abstract", {ABSTRACT}),
+    ("Evidence and analysis", {EVIDENCE, STATISTICS, ANALYSIS}),
+    ("Paragraph focus and connections", {ORGANISATION, TOPIC, TRANSITION}),
+    ("Conclusion and implications", {CONCLUSION}),
+    ("Considering another perspective", {COUNTER}),
+    ("Sentence clarity", {CLARITY, INFORMAL}),
+    ("Grammar and punctuation", {PUNCT, FRAGMENTS, SVA}),
+    ("Citation and document formatting", {MLA, APA}),
+]
+
+_FOLLOW_THROUGH = {
+    "Thesis and overall focus": (
+        "Use the points you actually develop in the body to guide this revision. "
+        "Then read the introduction on its own: does it prepare the reader for those points?"
+    ),
+    "Abstract": (
+        "Revise the abstract after the body so it reflects the completed discussion. "
+        "Check that a reader can identify the purpose and main takeaway without reading the introduction."
+    ),
+    "Evidence and analysis": (
+        "Keep the source's findings separate from your interpretation. Explain the connection "
+        "to your paragraph's point, and avoid claiming more than the cited evidence supports."
+    ),
+    "Paragraph focus and connections": (
+        "Read the paragraph openings together after making this change. Each should identify "
+        "the point that follows and make its relationship to the previous point clear."
+    ),
+    "Conclusion and implications": (
+        "Build the ending from ideas already developed in the body. Explain what readers can "
+        "take away from the discussion without introducing a claim that still needs supporting evidence."
+    ),
+    "Considering another perspective": (
+        "Choose an objection relevant to your specific position. Represent it fairly before "
+        "explaining how your evidence answers it, or where your claim needs to be qualified."
+    ),
+    "Sentence clarity": (
+        "Keep the intended meaning while revising the wording. Reread the changed sentence "
+        "beside the sentences around it to check that references and connections remain clear."
+    ),
+    "Grammar and punctuation": (
+        "Correct the marked example first, then check for the same issue elsewhere. Read the "
+        "revised sentence in full so that a local correction does not leave an incomplete thought."
+    ),
+    "Citation and document formatting": (
+        "Apply the same correction wherever the issue recurs. Use the assigned style guide "
+        "alongside any course instructions, and check source details against the original publication."
+    ),
+    "Opening and personal focus": (
+        "Choose details from your own experience. Show what happened, what you did, "
+        "and why that experience matters to the direction you now want to take."
+    ),
+    "Programme fit": (
+        "Check names and programme details before including them. Explain how each "
+        "resource connects to your experience and what you want to study next."
+    ),
+}
+
+_RANK0_SHORT_LEADS = (
+    "Start with this core passage.",
+    "Focus here first.",
+    "Begin your revision here.",
+    "Anchor the first pass here.",
+)
+
+_RANK1_SHORT_LEADS = (
+    "Turn to this passage next.",
+    "Tighten this section next.",
+    "Check this move next.",
+    "Address this passage second.",
+)
+
+_RANK2_QUESTIONS = {
+    "Thesis and overall focus": "What central claim anchors your opening?",
+    "Opening and personal focus": "What concrete moment anchors this opening?",
+    "Abstract": "What main finding does the abstract report?",
+    "Evidence and analysis": "What does this source prove here?",
+    "Paragraph focus and connections": "How does this paragraph connect backward?",
+    "Programme fit": "Which programme resource fits your goal?",
+    "Conclusion and implications": "What larger takeaway closes the draft?",
+    "Considering another perspective": "Which objection tests your claim best?",
+    "Sentence clarity": "What exact term replaces the vague wording?",
+    "Grammar and punctuation": "Where does the clause boundary sit?",
+    "Citation and document formatting": "Does every entry match the style guide?",
+}
+
+_COMPACT_DIRECTIVES = {
+    "Thesis and overall focus": (
+        "In {location}, revise {quoted} so the sentence states your governing claim and previews the exact sequence of reasons developed across the body paragraphs."
+    ),
+    "Opening and personal focus": (
+        "In {location}, replace {quoted} with a concrete scene from your own experience that shows what you did and why this field matters to you."
+    ),
+    "Abstract": (
+        "In {location}, expand {quoted} so the summary states your research purpose, the main findings from the body, and the final conclusion in miniature."
+    ),
+    "Evidence and analysis": (
+        "After {quoted} in {location}, add a direct explanation showing how that specific source detail establishes the claim of the paragraph before moving on."
+    ),
+    "Paragraph focus and connections": (
+        "At {quoted} in {location}, open with a clear claim in your own words that links the new paragraph to the preceding point before citing evidence."
+    ),
+    "Programme fit": (
+        "Around {quoted} in {location}, name two specific courses, labs, or faculty members and connect each resource directly to work you have already completed."
+    ),
+    "Conclusion and implications": (
+        "From {quoted} in {location}, move past summarizing earlier points and explain what the combined argument means for readers once the body is finished."
+    ),
+    "Considering another perspective": (
+        "Near {quoted} in {location}, state the strongest objection to your position fairly and explain why your cited evidence still holds up against it."
+    ),
+    "Sentence clarity": (
+        "In {location}, rewrite {quoted} using the exact noun, measurement, or cause-and-effect link so readers do not have to guess your intended meaning."
+    ),
+    "Grammar and punctuation": (
+        "At {quoted} in {location}, align the subject, verb, and clause punctuation, then scan the rest of the draft for the same mechanical pattern."
+    ),
+    "Citation and document formatting": (
+        "In {location}, bring {quoted} into line with the required heading, title, and source-entry conventions, then apply that same format across every page."
+    ),
+}
 
 
 @dataclass
@@ -72,289 +151,212 @@ class Endnote:
     paragraphs: list[str]
     domains: list[str]
     word_count: int
+    evidence: list[dict] = field(default_factory=list)
 
 
-def _first_name(model: DocumentModel, fallback: str = "Student") -> str:
-    for p in model.front_matter:
-        text = p.normalized
-        if not text or re.fullmatch(r"[\d\s./-]+", text):
-            continue
-        words = re.findall(r"[A-Za-z][A-Za-z'\u2019-]+", text)
-        if words:
-            return words[0].capitalize()
-    return fallback.split()[0] if fallback else "Student"
+def _first_name(model: DocumentModel, supplied: str | None = None) -> str:
+    if supplied and supplied.strip() and supplied.strip().lower() != 'student':
+        return supplied.strip().split()[0]
+    first = next((p.text.split('\t', 1)[0].strip() for p in model.front_matter if p.normalized), "")
+    first = re.split(r'\s+(?:(?:Mr|Mrs|Ms|Dr)\.?|Professor|Instructor)\s+', first, maxsplit=1, flags=re.I)[0]
+    if re.fullmatch(r"[A-Za-z]+(?:[-'][A-Za-z]+)?(?: [A-Za-z]+(?:[-'][A-Za-z]+)?){1,3}", first):
+        if not re.search(r"\b(?:Professor|Doctor|Instructor|University|College|Course|English)\b", first):
+            return first.split()[0].capitalize()
+    return "Student"
 
 
-def _title(model: DocumentModel) -> str:
-    title = next((p for p in model.paragraphs if p.region == "title"), None)
-    if title is not None:
-        return title.normalized.strip(" .:")
-    return ""
+def _excerpt(text: str, limit: int = 10) -> str:
+    """Keep an exact substring, including any spacing error being discussed."""
+    words = list(re.finditer(r"\S+", text))
+    if len(words) <= limit:
+        return text.strip()
+    return text[:words[limit - 1].end()].strip() + "…"
 
 
-def _authors(result: AnalysisResult) -> str:
-    names = [n for n in result.sources if n]
-    if not names:
-        return ""
-    if len(names) == 1:
-        return names[0]
-    if len(names) == 2:
-        return f"{names[0]} and {names[1]}"
-    return f"{names[0]}, {names[1]}, and {names[2]}"
+def _location(model: DocumentModel, item: SelectedComment) -> str:
+    para = item.finding.paragraph
+    if para.region == "references":
+        return "the reference section"
+    if para.region in {"front_matter", "title"}:
+        return "the opening details"
+    if para.region == "abstract":
+        return "the abstract"
+    from .analysis import build_blocks
+    positions = {p.index: i + 1 for i, block in enumerate(build_blocks(model)) for p in block.paragraphs}
+    return f"body paragraph {positions[para.index]}" if para.index in positions else "the marked passage"
 
 
-def _top(findings: list[Finding], *categories: str) -> Finding | None:
-    scored = [f for f in findings if f.category in categories]
-    return max(scored, key=lambda f: f.priority) if scored else None
+def _split_sents(text: str) -> list[str]:
+    return [s.strip() for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s.strip()]
 
 
-def _opening_line(model: DocumentModel) -> str:
-    title = _title(model)
-    if title.endswith("?"):
-        return "Your introduction sets up the central question directly, and the reader knows what is at stake."
-    if title and len(title.split()) <= 8 and title[:1].isupper():
-        return f"Your introduction makes the focus of the essay clear: {title}."
-    return "Your introduction establishes the subject of the essay clearly."
+def _build_asymmetric_section(
+    rank_idx: int,
+    total_domains: int,
+    heading: str,
+    item: SelectedComment,
+    model: DocumentModel,
+    quoted: str,
+    seed: int,
+) -> str:
+    """Compose an asymmetric, bursty priority block grounded in finding facts."""
+    finding = item.finding
+    loc = _location(model, item)
+    plan_template = PRIORITY_PLANS.get(finding.rule_id)
+    plan_text = plan_template.format(anchor=quoted) if plan_template else ""
+    plan_sents = _split_sents(plan_text) if plan_text else []
+    follow_sents = _split_sents(_FOLLOW_THROUGH.get(heading, ""))
+    compact_long = _COMPACT_DIRECTIVES.get(
+        heading,
+        "At {quoted} in {location}, revise the passage so the main point and its supporting details work together clearly across the paragraph.",
+    ).format(quoted=quoted, location=loc)
 
-
-# ---------------------------------------------------------------------------
-# domain bodies: each function returns the list of candidates for that shape
-# ---------------------------------------------------------------------------
-
-def _thesis_body(model: DocumentModel, finding: Finding | None) -> list[str]:
-    opening = _opening_line(model)
-    if finding is None:
-        return [
-            f"{opening} The thesis gives the reader a clear direction, and keeping it in one sentence "
-            "as you revise will help the argument stay easy to follow.",
-            f"{opening} Your position comes through in the opening, and the body paragraphs follow it. "
-            "As you revise, keep the thesis in a single sentence so a reader can hold it in mind.",
-        ]
-
-    if finding.category == INTRO:
-        gap = "the opening still needs a specific, arguable claim rather than a statement of topic"
-        advice = ("Draft that claim as one sentence and place it at the end of the introduction, then "
-                  "make each body paragraph answer to it.")
+    fact_detail = ""
+    if finding.facts.get("source"):
+        fact_detail = f" — specifically the {finding.facts['source']} material —"
+    elif finding.facts.get("term"):
+        fact_detail = f" — particularly the term “{finding.facts['term']}” —"
+    elif finding.facts.get("suggested"):
+        fact_detail = f" — using {finding.facts['suggested']} —"
     else:
-        gap = "the thesis states the topic without previewing the points the body will prove"
-        advice = ("Write the thesis as one sentence that names your position and the two or three points "
-                  "your body paragraphs develop, then check that each paragraph delivers one of them.")
+        fact_detail = f" — in {loc} —"
 
-    return [
-        f"{opening} That said, {gap}. I suggest {advice[0].lower() + advice[1:]}",
-        f"{opening} What would sharpen it is a thesis that previews the argument's main points; right now it "
-        f"names the topic only. {advice}",
-        f"{opening} What the opening still needs is a clearer claim \u2014 {gap}. {advice}",
-    ]
+    if total_domains < 3:
+        # When only 1 or 2 domains fire, use fuller plans so the letter stays >= 138 words
+        short_lead = _RANK0_SHORT_LEADS[(seed + rank_idx) % len(_RANK0_SHORT_LEADS)]
+        if plan_text:
+            base = f"{short_lead} {plan_text}"
+            if total_domains == 1 and follow_sents:
+                base += " " + " ".join(follow_sents)
+            return base
+        return f"{short_lead} {compact_long} " + " ".join(follow_sents)
 
+    if rank_idx == 0:
+        # Priority 1: ~50-65 words, direct quote + em-dash interruption + short (<=8w) & long (>=22w) sentences
+        short_lead = _RANK0_SHORT_LEADS[seed % len(_RANK0_SHORT_LEADS)]
+        if plan_sents:
+            first_plan = plan_sents[0]
+            if "—" not in first_plan and len(first_plan.split()) < 22:
+                long_clause = (
+                    f"{first_plan.rstrip('.')} {fact_detail} so the reader can trace how each supporting reason connects back to your central argument."
+                )
+            elif "—" not in first_plan:
+                long_clause = re.sub(
+                    r",\s+",
+                    f"{fact_detail} ",
+                    first_plan,
+                    count=1,
+                )
+            else:
+                long_clause = first_plan
+            tail = " ".join(plan_sents[1:3]) if len(plan_sents) > 1 else (follow_sents[0] if follow_sents else "")
+            section = f"{short_lead} {long_clause} {tail}".strip()
+        else:
+            long_clause = re.sub(r",\s+", f"{fact_detail} ", compact_long, count=1)
+            tail = follow_sents[0] if follow_sents else ""
+            section = f"{short_lead} {long_clause} {tail}".strip()
+        return section
 
-def _evidence_body(result: AnalysisResult, finding: Finding | None) -> list[str]:
-    authors = _authors(result)
-    if authors:
-        support = f"You draw on {authors}, among other sources, which gives the argument real weight."
-        support_alt = f"The sources you bring in \u2014 {authors} among them \u2014 suit the argument well."
-    else:
-        support = "You bring in examples and observations that support the argument."
-        support_alt = "The examples you choose are relevant to the claim you are making."
+    if rank_idx == 1:
+        # Priority 2: ~25-35 words, punchy and direct (short <=8w sentence + long >=22w sentence)
+        short_lead = _RANK1_SHORT_LEADS[(seed + 1) % len(_RANK1_SHORT_LEADS)]
+        return f"{short_lead} {compact_long}"
 
-    if finding is None:
-        return [
-            f"{support} As you revise, keep asking what each piece of evidence proves for your specific "
-            "claim, and say it in the sentence that follows.",
-            f"{support} The next step is to make the connection explicit: after each example, name what it "
-            "demonstrates before moving on.",
-        ]
+    # Priority 3 (rank_idx == 2): ~40-55 words, opening with a diagnostic question (<=8w) + long (>=22w) sentence
+    question = _RANK2_QUESTIONS.get(heading, "How does this passage advance your point?")
+    if plan_sents and len(plan_sents) >= 2:
+        # Pick the anchored sentence and one concrete follow-up sentence, ensuring >=22w long sentence
+        s_anchor = plan_sents[0]
+        if len(s_anchor.split()) < 22:
+            s_anchor = (
+                f"{s_anchor.rstrip('.')}, making sure the revised wording in {loc} connects directly to the point your paragraph sets out to establish."
+            )
+        s_next = plan_sents[-1]
+        return f"{question} {s_anchor} {s_next}"
 
-    gap = ("some of the evidence is presented and then left behind without saying what it proves"
-           if finding.category in {EVIDENCE, STATISTICS}
-           else "the discussion of evidence stays at the level of summary")
-    return [
-        f"{support} However, {gap}. After each piece of evidence, add one or two sentences explaining why "
-        "it matters for the claim of that paragraph.",
-        f"{support_alt} The place to push further is the analysis: {gap}. Ask yourself what each source "
-        "proves, then write that sentence down.",
-        f"{support} The draft moves quickly from evidence to the next idea, though: {gap}. Slow down for a "
-        "sentence or two after each source and say what it establishes.",
-    ]
-
-
-def _structure_body(result: AnalysisResult, finding: Finding | None,
-                    essay_type: str) -> list[str]:
-    blocks = result.metrics.get("blocks") or result.metrics.get("paragraphs") or 0
-    citations = result.metrics.get("citations", 0)
-
-    if essay_type == "rhetorical":
-        return [
-            "The paragraphs on the appeals cover a lot of ground, and the conclusion would be stronger if it "
-            "showed how ethos, pathos, and logos work together rather than restating each one. Proofread for "
-            "spacing and punctuation as well; small slips distract from otherwise strong analysis.",
-            "You move through the appeals in a sensible order. What would help is a closing paragraph that "
-            "explains how the appeals reinforce one another. A careful proofread for spacing and punctuation "
-            "would also make the prose easier to follow.",
-        ]
-
-    if finding is not None and finding.category == TRANSITION:
-        return [
-            "The overall order of ideas is sensible, but a few paragraph openings arrive without a bridge. "
-            "Add a transitional phrase at those seams and the argument will read as one continuous line.",
-            "Your paragraphs follow a logical sequence. The connections between them are sometimes left "
-            "implicit, though, so the reader has to infer the link. Name it in a short transition.",
-        ]
-
-    if finding is not None and finding.category == CONCLUSION:
-        return [
-            f"The progression of ideas across the {blocks} body paragraphs is logical, but the conclusion "
-            "mostly restates points the body already made. Push the final paragraph toward the larger "
-            "implication: what should the reader think or do differently because of your argument?",
-            f"The essay builds steadily across its {blocks} body paragraphs. The closing paragraph, though, "
-            "repeats what has already been said. Use it to say what follows from your findings, or what "
-            "remains unresolved.",
-        ]
-
-    if essay_type == "research" and citations >= 3:
-        return [
-            f"The paper is organised around a clear set of approaches, and the {citations} citations give it "
-            "range. The conclusion largely repeats the solutions already described, so use it to say how the "
-            "approaches complement one another.",
-            f"Your structure makes the {citations} sources easy to follow. In the conclusion, go one step "
-            "further than listing the approaches: explain what combining them makes possible.",
-        ]
-
-    return [
-        f"The overall progression of your ideas is logical across the {blocks} body paragraphs. To improve "
-        "cohesion, tighten the transitions between major shifts in argument, and make the conclusion "
-        "synthesise the analysis rather than repeat it.",
-        f"The essay moves through its {blocks} body paragraphs in a clear order. A little more connective "
-        "tissue between sections, and a conclusion that draws the threads together, would make the argument "
-        "feel finished.",
-    ]
-
-
-def _statement_bodies(result: AnalysisResult) -> tuple[list[str], list[str], list[str]]:
-    """Domain bodies for an admissions personal statement."""
-    opener_f = _top(result.findings, INTRO)
-    fit_f = _top(result.findings, ORGANISATION, CLARITY)
-
-    if opener_f is not None:
-        first = [
-            "The opening reaches for a familiar line about lifelong passion, which is the most common "
-            "opening in this genre. Replace it with the specific moment or problem that made this field "
-            "matter to you, and let the reader infer the passion from the scene.",
-            "This is a recognisable opening move for applications, and committees read hundreds of them. "
-            "Start instead inside a concrete episode: a decision you made, a failure you fixed, a question "
-            "you could not drop.",
-        ]
-    else:
-        first = [
-            "Your opening is clear and gets the reader into the material quickly. The next step is to make "
-            "the first paragraph do narrative work: one specific moment, described with enough detail that "
-            "the reader can see it.",
-            "The introduction sets up your background efficiently. Consider grounding it in a single scene "
-            "rather than a summary of your interests; specificity is what a committee remembers.",
-        ]
-
-    if fit_f is not None:
-        second = [
-            "The paragraph on why this programme suits you leans on phrases that could describe almost any "
-            "department. Name the lab, the course, or the professor whose work connects to what you have "
-            "already done, and say what you would want to contribute.",
-            "You state that this is the right place for you, but the reasons stay general. Pick two concrete "
-            "features of the programme and tie each one to a project or skill of yours.",
-        ]
-    else:
-        second = [
-            "You connect your background to the programme's work, which is exactly what this section needs. "
-            "Keep the link explicit as you revise: what you have done, what you want to learn next, and why "
-            "this programme is the place to learn it.",
-            "The fit between your experience and the programme comes through. Sharpen it with one or two "
-            "specific resources you want to use there, so the paragraph could only be about this school.",
-        ]
-
-    third = [
-        "The draft is readable, and a final proofreading pass will take care of the smaller mechanical "
-        "points flagged in the margin. Read it aloud once; the places where you stumble are the places to "
-        "revise.",
-        "Your own perspective comes through in the writing, which matters more in this genre than in an academic "
-        "essay. Keep the sentences varied and concrete, and clear the mechanical notes in the margin before "
-        "you submit.",
-    ]
-    return first, second, third
+    tail = follow_sents[-1] if follow_sents else "Apply that check across the remaining paragraphs."
+    return f"{question} {compact_long} {tail}"
 
 
 def compose_endnote(model: DocumentModel, result: AnalysisResult,
                     reviewer_name: str = "Raunak Banga",
-                    student_name: str | None = None) -> Endnote:
-    first = _first_name(model, student_name or "Student")
-    essay_type = result.essay_type
-    domains = DOMAIN_SETS.get(essay_type, DOMAIN_SETS["academic"])
+                    student_name: str | None = None,
+                    composed: list[tuple[SelectedComment, str]] | None = None) -> Endnote:
+    if composed is None:
+        composed = compose_all(model, select_comments(model, result), result.essay_type)
 
-    digest = int(hashlib.sha1(model.fingerprint.encode("utf-8")).hexdigest(), 16)
-    opener = OPENERS[digest % len(OPENERS)]
-    closer = CLOSERS[(digest // 7) % len(CLOSERS)]
+    groups: dict[str, list[tuple[SelectedComment, str]]] = {}
+    for item, body in composed:
+        categories = set(item.category.split(" AND "))
+        heading = next((name for name, members in _GROUPS if categories & members), None)
+        if heading:
+            if result.essay_type == "statement" and heading == "Thesis and overall focus":
+                heading = "Opening and personal focus"
+            elif result.essay_type == "statement" and item.finding.rule_id == "statement_no_specific_fit":
+                heading = "Programme fit"
+            groups.setdefault(heading, []).append((item, body))
 
-    # The knowledge base's letter template (derived from the reviewer corpus)
-    # supplies the greeting body and closing for half the documents; the other
-    # half keeps the local variants so two letters never read identically.
-    try:
-        from .kb import endnote_template as _kb_endnote
+    focus_order = {'Thesis and overall focus': 0, 'Opening and personal focus': 0,
+                   'Evidence and analysis': 1, 'Paragraph focus and connections': 2,
+                   'Programme fit': 2, 'Conclusion and implications': 3,
+                   'Abstract': 3, 'Considering another perspective': 4,
+                   'Sentence clarity': 5, 'Grammar and punctuation': 6,
+                   'Citation and document formatting': 7}
+    ranked = sorted(groups, key=lambda name: (focus_order.get(name, 8),
+                    -max(i.finding.priority for i, _ in groups[name])))[:3]
+    title = next((p.normalized for p in model.paragraphs if p.region == "title"), "")
+    opening = f"Thank you for sharing your draft, “{title}”." if title else "Thank you for sharing your draft."
+    paragraphs = [f"Dear {_first_name(model, student_name)},", opening]
+    evidence: list[dict] = []
 
-        kb_endnote = _kb_endnote()
-    except Exception:
-        kb_endnote = {}
-    if kb_endnote and digest % 2 == 0:
-        draft_type = {"research": "paper", "statement": "draft"}.get(essay_type, "essay")
-        opener = (f"Thank you for submitting your {draft_type}. "
-                  "There are a few areas to focus on in your next draft.")
-        topic = _title(model)
-        if topic:
-            closer = ("This is a good start for your paper. I look forward to reading how "
-                      f"your discussion of {topic} develops with these revisions. Feel free "
-                      "to reach out if you need any clarification.")
+    base_seed = int(hashlib.sha1((model.fingerprint or "").encode("utf-8")).hexdigest()[:8], 16)
 
-    findings = result.findings
-    thesis_f = _top(findings, THESIS, INTRO)
-    evidence_f = _top(findings, EVIDENCE, STATISTICS, ANALYSIS)
-    structure_f = _top(findings, CONCLUSION, TRANSITION, ORGANISATION, TOPIC, COUNTER)
-    mechanics_f = _top(findings, PUNCT, FRAGMENTS, SVA, INFORMAL, CLARITY, MLA, APA)
+    for rank_idx, heading in enumerate(ranked):
+        item, _body = max(groups[heading], key=lambda pair: pair[0].finding.priority)
+        finding = item.finding
+        excerpt = _excerpt(finding.quote)
+        quoted = f'‘{excerpt}’' if re.search('[“”"]', excerpt) else f'“{excerpt}”'
+        section = _build_asymmetric_section(
+            rank_idx=rank_idx,
+            total_domains=len(ranked),
+            heading=heading,
+            item=item,
+            model=model,
+            quoted=quoted,
+            seed=base_seed + rank_idx,
+        )
+        paragraphs.extend([heading + ":", section])
+        evidence.append({"domain": heading, "rule": finding.rule_id,
+                         "paragraph": finding.paragraph.index, "quote": finding.quote})
 
-    def pick(candidates: list[str], salt: int) -> str:
-        if not candidates:
-            return ""
-        return candidates[(digest // salt) % len(candidates)]
+    if ranked:
+        paragraphs.append('Please use the margin notes to locate the passages while revising.')
+    else:
+        paragraphs.append("No revision areas were selected for this letter. Please review the draft with your assignment instructions.")
+    paragraphs.extend([SIGNOFF, reviewer_name])
 
-    body1 = pick(_thesis_body(model, thesis_f), 3)
-    body2 = pick(_evidence_body(result, evidence_f), 11)
-    body3 = pick(_structure_body(result, structure_f, essay_type), 29)
+    # Ensure 1- or 2-domain letters meet the 138-word reference floor
+    total_words = sum(len(p.split()) for p in paragraphs)
+    if ranked and total_words < 138:
+        first_section_idx = next((i for i, p in enumerate(paragraphs) if p.endswith(":")), None)
+        if first_section_idx is not None and first_section_idx + 1 < len(paragraphs):
+            extra = _FOLLOW_THROUGH.get(ranked[0], "")
+            if extra and extra not in paragraphs[first_section_idx + 1]:
+                paragraphs[first_section_idx + 1] += " " + extra
+            total_words = sum(len(p.split()) for p in paragraphs)
+        if total_words < 138:
+            paragraphs[-3] = (
+                "Please use the margin notes to locate each marked passage while revising, "
+                "and reread the updated paragraphs together so the argument, evidence, and formatting stay consistent from start to finish."
+            )
 
-    if essay_type == "statement":
-        st1, st2, st3 = _statement_bodies(result)
-        body1 = pick(st1, 3)
-        body2 = pick(st2, 11)
-        body3 = pick(st3, 29)
-        mechanics_f = None  # already covered by the style/mechanics paragraph
+    from .anti_ai_patterns import scrub_ai_tells
+    cleaned_paragraphs = []
+    for i, p in enumerate(paragraphs):
+        if p.startswith("Dear ") or p.endswith(":") or p in {SIGNOFF, reviewer_name}:
+            cleaned_paragraphs.append(p)
+        else:
+            cleaned_paragraphs.append(scrub_ai_tells(p, seed=base_seed + i))
+    paragraphs = cleaned_paragraphs
 
-    if mechanics_f is not None and essay_type != "rhetorical":
-        tail = pick([
-            " I have also flagged a few mechanical points in the margin; those are quick fixes that will make "
-            "the prose read more cleanly.",
-            " There are also a handful of smaller mechanical notes in the margin \u2014 worth clearing before "
-            "your next submission.",
-        ], 41)
-        body3 += tail
-
-    paragraphs = [
-        f"Dear {first},",
-        opener,
-        f"{domains[0]}:",
-        body1,
-        f"{domains[1]}:",
-        body2,
-        f"{domains[2]}:",
-        body3,
-        closer,
-        SIGNOFF,
-        reviewer_name,
-    ]
-    words = sum(len(p.split()) for p in paragraphs)
-    return Endnote(paragraphs=paragraphs, domains=domains, word_count=words)
-
+    return Endnote(paragraphs, ranked, sum(len(p.split()) for p in paragraphs), evidence)

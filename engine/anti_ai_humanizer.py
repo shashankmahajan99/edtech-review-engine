@@ -1,13 +1,11 @@
 """
 Anti-AI Humanizer Engine for Academic Editorial Operations.
-Guarantees 0% AI detection probability on GPTZero, Turnitin AI, and CopyLeaks
-by enforcing high perplexity, extreme burstiness, authentic reviewer voice,
-and eliminating all standard LLM stylistic markers.
+Legacy editorial helpers. No detector outcome or human authorship is promised.
+Studio uses the guarded feedback-humanization stage before Word validation.
 """
 
 import re
 import math
-import random
 from typing import List, Dict, Any, Tuple
 
 
@@ -45,7 +43,7 @@ HUMAN_EDITORIAL_REPLACEMENTS = {
 def measure_burstiness(text: str) -> Tuple[float, float, float]:
     """
     Computes sentence length mean, standard deviation, and burstiness ratio.
-    High burstiness (std_dev > 7.0) is the signature of human writing.
+    These statistics describe rhythm; they do not identify human authorship.
     """
     sentences = [s.strip() for s in re.split(r'[.!?]+', text) if s.strip()]
     if not sentences:
@@ -59,59 +57,22 @@ def measure_burstiness(text: str) -> Tuple[float, float, float]:
 
 
 def sanitize_ai_vocabulary(text: str) -> str:
-    """Replaces clichéd LLM terminology with authentic reviewer phrasing."""
-    cleaned = text
-    for ai_phrase, human_phrase in HUMAN_EDITORIAL_REPLACEMENTS.items():
-        pattern = re.compile(rf"\b{re.escape(ai_phrase)}\b", re.IGNORECASE)
-        cleaned = pattern.sub(human_phrase, cleaned)
-    return cleaned
+    """Preserve supplied prose; broad synonym substitutions can change advice."""
+    return text
 
 
 def inject_human_burstiness(sentences: List[str]) -> List[str]:
     """
-    Alternates between short, punchy editorial commands and detailed analytical commentary
-    to disrupt uniform sentence lengths and defeat classifier perplexity scoring.
+    Compatibility helper: return the original sentences without invented remarks.
     """
-    short_anchors = [
-        "Cut this word.",
-        "Notice this shift.",
-        "Show, don't tell.",
-        "Watch your tense here.",
-        "Good concrete detail.",
-        "This drags slightly.",
-        "Be specific.",
-        "Strong hook here."
-    ]
-    
-    result = []
-    for i, s in enumerate(sentences):
-        result.append(s)
-        # Periodically inject a brief 2-4 word reviewer interjection if preceding sentence was long
-        if len(s.split()) > 22 and i < len(sentences) - 1 and random.random() < 0.4:
-            result.append(random.choice(short_anchors))
-    return result
+    return list(sentences)
 
 
 def humanize_editorial_comment(original_comment: str, author_role: str = "Trivium / ThinkingStorm Senior Reviewer") -> str:
     """
-    Converts standard feedback into an authentic human tutor comment.
-    Employs contractions, colloquial reviewer jargon, and variable phrasing.
+    Compatibility helper preserving the original diagnosis and reviewer register.
     """
-    comment = sanitize_ai_vocabulary(original_comment)
-    
-    # Ensure natural contractions
-    contractions = {
-        r"\bdo not\b": "don't",
-        r"\bcannot\b": "can't",
-        r"\bit is\b": "it's",
-        r"\byou are\b": "you're",
-        r"\bthat is\b": "that's",
-        r"\bwill not\b": "won't"
-    }
-    for pat, rep in contractions.items():
-        comment = re.sub(pat, rep, comment, flags=re.IGNORECASE)
-        
-    return comment.strip()
+    return original_comment.strip()
 
 
 def build_thinkingstorm_tutor_overview(
@@ -125,7 +86,7 @@ def build_thinkingstorm_tutor_overview(
 ) -> str:
     """
     Generates a full ThinkingStorm / Trivium style comprehensive Tutor Overview Letter
-    guaranteed to pass GPTZero / Turnitin AI detectors with 0% AI detection probability.
+    with the legacy letter structure. No authorship-detector result is measured.
     """
     total_score = sum(scores.values())
     first_name = student_name.split()[0] if student_name else "Student"

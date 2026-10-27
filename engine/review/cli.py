@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -24,8 +25,19 @@ from .selection import select_comments
 from .persona import compose_all
 
 
+def _feedback_rewriter():
+    from engine.feedback_humanizer import configured_rewriter
+    try:
+        return configured_rewriter()
+    except RuntimeError as exc:
+        raise PipelineError(str(exc)) from exc
+
+
 def _print_result(result) -> None:
-    print(f"\nOK  {Path(result.input_path).name}")
+    label = 'NEEDS REVIEW' if result.quality.get('needs_review') else 'GENERATED'
+    print(f"\n{label}  {Path(result.input_path).name}")
+    for message in result.quality.get('messages', []):
+        print(f'    quality     : {message}')
     print(f"    deliverable : {result.output_path}")
     print(f"    report      : {result.report_path}")
     print(f"    comments    : {len(result.comments)}")
@@ -48,6 +60,7 @@ def cmd_review(args: argparse.Namespace) -> int:
             academic_style=args.style,
             allow_existing_comments=args.allow_existing,
             overwrite=args.overwrite,
+            feedback_rewriter=_feedback_rewriter(),
         )
     except PipelineError as exc:
         print(f"REJECTED: {exc}", file=sys.stderr)
@@ -55,7 +68,7 @@ def cmd_review(args: argparse.Namespace) -> int:
     _print_result(result)
     if args.json:
         print(json.dumps({"report": result.report_path, "validation": result.validation.metrics}, indent=2))
-    return 0
+    return 3 if result.quality.get('needs_review') else 0
 
 
 def cmd_batch(args: argparse.Namespace) -> int:
@@ -68,27 +81,32 @@ def cmd_batch(args: argparse.Namespace) -> int:
         print("no .docx files found")
         return 0
     failures = 0
+    needs_review = 0
     for path in files:
         try:
             result = review_document(
                 path, output_dir=args.out or source, reviewer_name=args.reviewer,
                 reviewer_initials=args.initials, academic_style=args.style,
                 allow_existing_comments=args.allow_existing, overwrite=args.overwrite,
+                feedback_rewriter=_feedback_rewriter(),
             )
-            print(f"OK   {path.name} -> {Path(result.output_path).name} "
+            label = 'NEEDS REVIEW' if result.quality.get('needs_review') else 'GENERATED'
+            needs_review += bool(result.quality.get('needs_review'))
+            print(f"{label}   {path.name} -> {Path(result.output_path).name} "
                   f"({len(result.comments)} comments)")
         except PipelineError as exc:
             failures += 1
             print(f"FAIL {path.name}: {exc}", file=sys.stderr)
     print(f"\n{len(files) - failures}/{len(files)} reviewed")
-    return 0 if failures == 0 else 1
+    return 1 if failures else 3 if needs_review else 0
 
 
 def cmd_watch(args: argparse.Namespace) -> int:
     from .watch import run_watcher
 
     run_watcher(Path(args.inbox), Path(args.outbox), args.interval,
-                args.reviewer, args.initials, args.style, once=args.once)
+                args.reviewer, args.initials, args.style, once=args.once,
+                feedback_rewriter=_feedback_rewriter())
     return 0
 
 
@@ -137,6 +155,7 @@ def cmd_audit(args: argparse.Namespace) -> int:
 
     from lxml import etree
 
+    from .anti_ai_patterns import audit_ai_tells
     from .style_guard import (
         banned_hits, burstiness, opener_ratio, repeated_ngram_ratio,
     )
@@ -166,19 +185,23 @@ def cmd_audit(args: argparse.Namespace) -> int:
 
     joined = " ".join(bodies)
     mean, std = burstiness(joined)
+    cv = round(std / mean, 2) if mean > 0 else 0.0
     en_mean, en_std = burstiness(endnote)
+    en_cv = round(en_std / en_mean, 2) if en_mean > 0 else 0.0
     hits = sorted({h for b in bodies + [endnote] for h in banned_hits(b)})
+    tells = sorted({t for b in bodies + [endnote] for t in audit_ai_tells(b)})
     lengths = [len(b.split()) for b in bodies]
 
     print(f"FILE       {path.name}")
     print(f"comments   {len(bodies)}")
     print(f"lengths    {lengths}")
-    print(f"sentences  mean {mean:.1f} words | variance(std) {std:.2f}")
+    print(f"sentences  mean {mean:.1f} words | variance(std) {std:.2f} | cv {cv:.2f}")
     print(f"5-grams    repeat ratio {repeated_ngram_ratio(bodies):.3f}")
     print(f"openers    variety {opener_ratio(bodies):.2f}")
     print(f"endnote    {len(endnote.split())} words | "
-          f"mean {en_mean:.1f} | std {en_std:.2f}")
+          f"mean {en_mean:.1f} | std {en_std:.2f} | cv {en_cv:.2f}")
     print(f"banned     {hits or 'none'}")
+    print(f"ai_tells   {tells or 'none'}")
 
     ok = True
     if len({round(length, 0) for length in lengths}) < 2 and len(bodies) >= 4:
@@ -186,7 +209,13 @@ def cmd_audit(args: argparse.Namespace) -> int:
     if len(bodies) >= 3 and std < 2.6:
         ok = False
         print("FAIL       sentence lengths too uniform for the human band")
-    if hits:
+    if len(bodies) >= 4 and cv < 0.42:
+        ok = False
+        print(f"FAIL       sentence length CV {cv:.2f} < 0.42")
+    if len(bodies) >= 3 and repeated_ngram_ratio(bodies) > 0.12:
+        ok = False
+        print(f"FAIL       repeated 5-grams {repeated_ngram_ratio(bodies):.3f} > 0.12")
+    if hits or tells:
         ok = False
         print("FAIL       banned AI phrasing present")
     print("RESULT     " + ("PASS" if ok else "REVIEW"))
@@ -196,11 +225,13 @@ def cmd_audit(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="engine.review.cli",
-        description="Deterministic ThinkingStorm review pipeline (offline, zero tokens)",
+        description="ThinkingStorm review pipeline (local model or offline rules)",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
     def common(p: argparse.ArgumentParser) -> None:
+        p.add_argument('--backend', choices=['rules', 'local'], default=None,
+                       help='review engine (defaults to local when configured)')
         p.add_argument("--reviewer", default="Raunak Banga")
         p.add_argument("--initials", default="RB")
         p.add_argument("--style", default="auto", choices=["auto", "mla", "apa"])
@@ -250,6 +281,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    from engine.review_runtime import apply_runtime_defaults
+    apply_runtime_defaults()
+    if hasattr(args, 'backend'):
+        if args.backend:
+            os.environ['TS_REVIEW_BACKEND'] = args.backend
     return args.func(args)
 
 

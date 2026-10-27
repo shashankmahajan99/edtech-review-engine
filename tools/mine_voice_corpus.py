@@ -72,6 +72,25 @@ def stats(values: list[float]) -> dict:
     }
 
 
+def quantiles(values: list[float]) -> dict[str, float]:
+    if not values:
+        return {"p10": 6.0, "p25": 9.0, "p50": 13.0, "p75": 18.0, "p90": 26.0}
+    ordered = sorted(values)
+    n = len(ordered)
+
+    def _pct(p: float) -> float:
+        idx = min(n - 1, max(0, int(round((n - 1) * p))))
+        return round(float(ordered[idx]), 1)
+
+    return {
+        "p10": _pct(0.10),
+        "p25": _pct(0.25),
+        "p50": _pct(0.50),
+        "p75": _pct(0.75),
+        "p90": _pct(0.90),
+    }
+
+
 def is_specific(comment: str, quote: str) -> bool:
     if re.search(r"[\u201c\"][^\u201d\"]{3,}[\u201d\"]", comment):
         return True
@@ -185,6 +204,52 @@ def main(folder: str) -> None:
         "banned_hits": dict(banned_hits),
         "top_labels": dict(labels.most_common(15)),
         "top_openers": dict(openers.most_common(20)),
+        "target_cv": max(
+            0.45,
+            round(
+                (statistics.pstdev(all_sentences) / statistics.fmean(all_sentences)),
+                2,
+            )
+            if len(all_sentences) > 1 and statistics.fmean(all_sentences) > 0
+            else 0.45,
+        ),
+        "sentence_length_quantiles": quantiles([float(n) for n in all_sentences]),
+        "opener_archetypes": [
+            "imperative_quote",
+            "socratic_check",
+            "contrastive_claim",
+            "conditional_fix",
+            "fragment_diagnosis",
+            "reader_anchor",
+        ],
+        "opener_archetype_exemplars": {
+            "imperative_quote": [
+                'Replace “things” with the specific policy or outcome you mean.',
+                'Move the date below the course line; an MLA heading ends with the date.',
+                'Cut “In conclusion” and let the final paragraph close on the idea itself.',
+            ],
+            "socratic_check": [
+                'What central claim should readers take from this opening?',
+                'Which detail in the source establishes the connection to your paragraph claim?',
+                'Could you identify the specific position you will support and the reasons behind it?',
+            ],
+            "contrastive_claim": [
+                'You open with a source citation, yet the paragraph has not stated its own claim.',
+                'While the body paragraphs develop three distinct reasons, the thesis names only the broad topic.',
+            ],
+            "conditional_fix": [
+                'If the discussion changes to a different point, start a new paragraph there and introduce that point explicitly.',
+                'When you present these findings, elaborate on what the data proves and how it supports the main claim.',
+            ],
+            "fragment_diagnosis": [
+                'Dates in MLA run day-month-year. Set this one as 12 October 2026.',
+                'Titles do not take a period. Remove it.',
+            ],
+            "reader_anchor": [
+                'After the abstract, a reader should know what you found, not just what you studied.',
+                'Without a topic sentence, the reader meets the citation before knowing what it is meant to prove.',
+            ],
+        },
         "endnote_words": stats([float(e["words"]) for e in endnotes]),
         "examples": {
             "question": [c["body"] for c in question[:5]],

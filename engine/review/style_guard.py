@@ -1,17 +1,14 @@
-"""Deterministic 'does this read human?' checks.
+"""Deterministic editorial style checks.
 
-Detectors such as GPTZero score text on burstiness (variance in sentence
-length), lexical repetition, and tell-tale LLM phrasing.  We cannot call the
-detector offline, so the pipeline enforces the observable proxies that separate
-the reviewer's real comments from generated boilerplate:
+These checks describe readability and repetition. They do not measure
+authorship, predict a third-party detector result, or certify human writing:
 
 * no banned LLM vocabulary,
 * sentence-length variance inside a human band,
 * no repeated 5-gram across comments,
 * varied sentence openers.
 
-Thresholds are calibrated so the three human exemplars pass comfortably and
-canned template text fails.
+The reviewer exemplars provide a reference for readability thresholds.
 """
 from __future__ import annotations
 
@@ -47,11 +44,21 @@ def burstiness(text: str) -> tuple[float, float]:
     return (mean, var ** 0.5)
 
 
+def _strip_quotes_and_urls(text: str) -> str:
+    prose = re.sub(r"https?://\S+", " ", text)
+    prose = re.sub(r"\u201c[^\u201d]*\u201d", " ", prose)
+    prose = re.sub(r'"[^"]*"', " ", prose)
+    prose = re.sub(r"‘(?:[^’]|(?<=\w)’(?=\w))*’", " ", prose)
+    prose = re.sub(r"(?<!\w)'(?:[^'\n]|(?<=\w)'(?=\w))*'(?!\w)", " ", prose)
+    return prose
+
+
 def repeated_ngram_ratio(texts: list[str], n: int = 5) -> float:
     grams: dict[tuple[str, ...], int] = {}
     total = 0
     for text in texts:
-        words = re.findall(r"[a-z']+", text.lower())
+        prose = _strip_quotes_and_urls(text)
+        words = re.findall(r"[a-z']+", prose.lower())
         if len(words) < n:
             continue
         for i in range(len(words) - n + 1):
@@ -81,6 +88,8 @@ def banned_hits(text: str) -> list[str]:
 
     prose = _re.sub(r"\u201c[^\u201d]*\u201d", " ", text)
     prose = _re.sub(r'"[^"]*"', " ", prose)
+    prose = _re.sub(r"‘(?:[^’]|(?<=\w)’(?=\w))*’", " ", prose)
+    prose = _re.sub(r"(?<!\w)'(?:[^'\n]|(?<=\w)'(?=\w))*'(?!\w)", " ", prose)
     low = prose.lower()
     return [p for p in BANNED_PHRASES if p in low]
 
@@ -108,12 +117,15 @@ def check_text_block(texts: list[str], label: str = "comments") -> StyleReport:
     if len(texts) >= 4 and openers < MIN_UNIQUE_OPENERS:
         errors.append(f"{label}: sentence openers repeat too often ({openers:.2f})")
 
+    cv = round(std / mean, 3) if mean > 0 else 0.0
+
     return StyleReport(
         ok=not errors,
         errors=errors,
         metrics={
             "mean_sentence": round(mean, 2),
             "burstiness_std": round(std, 2),
+            "cv": cv,
             "ngram_repeat": round(ngram, 3),
             "unique_openers": round(openers, 2),
             "banned": sorted(set(hits)),

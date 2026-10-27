@@ -1,21 +1,14 @@
-"""Deterministic comment composition in a human reviewer persona.
+"""Deterministic, rule-specific editorial comments.
 
-Each rule owns several phrasings mined from the reviewer's real deliverables: a
-diagnosis that names what is happening in the sentence, then one concrete
-directive, occasionally closing with a Socratic question.  Variants deliberately
-differ in length (short command, two-sentence note, longer reasoned paragraph)
-because uniform sentence length is the clearest machine-written tell.
-
-The variant is chosen by hashing the document fingerprint with the finding's
-position, so the same document always produces byte-identical comments
-(reproducible) and different documents almost never share phrasing.
-
-Nothing here calls a model.  Composition is pure string work.
+Preserve each diagnosis and its revision advice as a complete unit. Variants
+are reproducible; wording choices never remove advice or introduce a different
+diagnosis. Nothing here calls a model or an authorship detector.
 """
 from __future__ import annotations
 
 import hashlib
 import re
+from string import Formatter
 from typing import Any
 
 from .selection import SelectedComment
@@ -176,15 +169,14 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
          "Remove the extra spacing so it begins at the top margin."),
     ],
     "implausible_year": [
-        ("This looks like a placeholder rather than the real publication year.",
-         "Replace it with the actual date for the source."),
-        ("The year here does not match the source's publication date.",
-         "Check the original and correct it."),
+        ("Please verify this publication year against the original source.",
+         "An unusual year may be correct; change it only if the source gives a different date."),
     ],
 
     # -- abstract -----------------------------------------------------------
     "abstract_intro": [
-        ("This reads like an introduction, not an abstract.", ""),
+        ("This reads like an introduction, not an abstract.",
+         "Summarize the paper's purpose, main findings, and takeaway rather than only introducing the topic."),
         ("Your abstract seems more like the introduction.",
          "An abstract should give a quick snapshot of the paper's purpose, major ideas, and conclusion."),
         ("This abstract sets up the topic but never states what the paper actually concludes.",
@@ -254,14 +246,14 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
          "Make it explicit with a transition at the start."),
     ],
     "evidence_no_analysis": [
-        ("The paragraph presents valuable evidence, but the analysis is too summarizing.",
+        ("The paragraph reports the evidence without explaining its relevance to the claim.",
          "Once you present these findings, elaborate on what the data proves and how it supports the "
          "main claim."),
         ("The evidence arrives and the paragraph moves on before explaining it.",
          "Add a sentence or two on what this {source} result means for your argument."),
         ("This citation is doing the work of an argument by itself.",
          "Spell out what the reader should conclude from it."),
-        ("The evidence is strong, but the paragraph never says why it matters.",
+        ("The paragraph does not explain why this evidence matters to its claim.",
          "Connect the finding back to the claim of the paragraph."),
         ("The paragraph summarizes what the study found and then moves on.",
          "That is the point where the analysis has to start: say what the finding means for your "
@@ -335,8 +327,8 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
     "para_passive": [
         ("There are {count} passive constructions in this paragraph.",
          "Name the actor and use an active verb where the actor matters."),
-        ("The paragraph hides its actors behind passive verbs.",
-         "Convert at least one of them so the sentence says who does what."),
+        ("Please check whether the passive wording makes the actor unclear.",
+         "Use an active verb where naming the actor would help; retain the passive where the action is the focus."),
     ],
     "para_no_claim": [
         ("The paragraph opens with a fact rather than a claim.",
@@ -431,15 +423,10 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
          "Rework this one so the transition grows out of the previous idea."),
     ],
     "paragraph_overlong": [
-        ("Two ideas are competing for the same paragraph here.",
-         "Split it where the subject changes, and give each half its own topic sentence."),
-        ("This paragraph is doing two jobs.", ""),
-        ("This paragraph changes direction without giving the reader a break.",
-         "Cut it at the shift and open the next paragraph with the new claim."),
-        ("This paragraph is carrying two jobs at once.",
-         "Find the sentence where the subject changes, split there, and give the new paragraph its "
-         "own topic sentence. Both halves will read faster, and the second idea will stop feeling "
-         "like an afterthought."),
+        ("This paragraph is long enough to warrant a check of its focus.",
+         "If the discussion changes subject, start a new paragraph there and introduce its main point."),
+        ("Please check whether this long paragraph develops one main point.",
+         "Keep supporting details together; separate a new point only where the focus changes."),
     ],
     "mla_heading_same_line": [
         ("Each item in an MLA heading belongs on its own line.",
@@ -448,10 +435,8 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
          "Separate them so name, instructor, course, and date each get a line."),
     ],
     "quote_no_page": [
-        ("A direct quotation needs a page reference in MLA.",
-         "Add the page number in parentheses after the quotation."),
-        ("This quotation is not tied to a location in the source.",
-         "Add the page number so the reader can find the passage."),
+        ('The source entry for {source} lists numbered pages, but this quotation has no page locator.',
+         'Check the edition you used and cite the page containing the quoted words. Use only a number supplied by that source.'),
     ],
 
     # -- mechanics -------------------------------------------------------------
@@ -468,6 +453,8 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
         ("A space appears before the punctuation here.",
          "Remove the gap so the mark sits flush against the word."),
         ("Close the gap before the punctuation.", ""),
+        ("Delete the extra space in front of this mark.",
+         "Set the punctuation flush against the preceding word."),
     ],
     "citation_period_space": [
         ("Review where the period should appear when a sentence ends with a parenthetical citation, and "
@@ -482,6 +469,10 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
     "missing_space_after_punct": [
         ("A space is missing after this punctuation mark.",
          "Add one so the words do not run together."),
+        ("Separate the punctuation mark from the next word with a space.",
+         "Insert a single space here to preserve the reading rhythm."),
+        ("There is no space following this mark.",
+         "Add a space so the two words are properly divided."),
     ],
     "typo_cluster": [
         ("The paper has a number of typos and formatting problems that hinder readability.",
@@ -505,6 +496,127 @@ TEMPLATES: dict[str, list[tuple[str, str]]] = {
     ],
 }
 
+
+from .pedagogy import TEMPLATES as _PEDAGOGY_TEMPLATES
+TEMPLATES.update(_PEDAGOGY_TEMPLATES)
+TEMPLATES.update({
+    'thesis_missing': [
+        ('The introduction describes the situation without setting out a focused position for the essay.',
+         'What central claim should readers take from {anchor}? State that claim and identify the main points the body will develop.'),
+        ('A central claim is still needed at the end of this introduction.',
+         'Use the discussion in your body paragraphs to decide what position the essay will support. Then bring that position and its main reasons together in a focused thesis statement.'),
+    ],
+    'thesis_vague': [
+        ('The thesis here is broad enough that the reader still has to infer the direction of the argument.',
+         'Could you identify the specific position you will support and the reasons behind it? Check that those reasons match the discussion in the body.'),
+    ],
+    'thesis_no_preview': [
+        ('The thesis states a position, but it does not yet prepare readers for the points that follow.',
+         'Name the main reasons or comparisons the body will develop, and place them in the same order. This will give the opening a clearer direction.'),
+    ],
+    'transition_abrupt': [
+        ('The move into this paragraph leaves the relationship to the previous point unstated.',
+         'Could you explain whether this idea adds a reason, introduces a contrast or follows from the earlier discussion? Build that relationship into the opening instead of adding a transition word on its own.'),
+    ],
+    'topic_evidence_opener': [
+        ('The paragraph opens with a source or result before identifying the point it will support.',
+         'Add a topic sentence in your own words that establishes the paragraph’s focus. Then introduce the evidence and explain how it supports that point.'),
+    ],
+    'para_no_claim': [
+        ('This opening reports background information, while the point of the paragraph is left implicit.',
+         'Could you name the main idea you want to develop here and explain its relation to the essay’s central focus? Let the supporting detail follow that idea.'),
+    ],
+})
+
+TEMPLATES.update({
+    'mla_heading_alignment': [
+        ('Headings in MLA sit flush left; centering the name block makes the page read as a title page rather than a heading.',
+         'Left-align the four heading lines and keep them double-spaced.'),
+        ('This heading block is centered, but MLA aligns it to the left margin.',
+         'Set the four heading lines flush left, in the same order.'),
+    ],
+    'formulaic_opinion': [
+        ('You introduce your own reading with “{phrase}” in {count} places, which makes the analysis sound recited rather than considered.',
+         'Keep the strongest instance and vary the others: name what the detail shows before you interpret it.'),
+        ('“{phrase}” recurs {count} times across the essay.',
+         'Replace the later instances with a direct statement of what the evidence suggests.'),
+    ],
+    'paragraph_short': [
+        ('This paragraph closes before the idea is developed.',
+         'Either fold it into the surrounding paragraph or add the evidence and explanation it needs to stand on its own.'),
+        ('This paragraph reads as a fragment of a thought.',
+         'Develop the claim with a source or an example, or merge it upward.'),
+        ('A brief section like this needs fuller explanation to support its point.',
+         'Supply the necessary evidence and analysis here, or combine this passage with the adjacent paragraph.'),
+        ('The thought stops before the reasoning is fully laid out.',
+         'Bring in specific detail to substantiate the claim, or merge these sentences into the previous paragraph.'),
+        ('This short passage leaves its main point undeveloped.',
+         'Expand on what this idea contributes to the overall paper, or attach it to the surrounding discussion.'),
+        ('Consider whether this brief point can stand independently.',
+         'Add the missing context and analytical follow-through, or integrate the sentence into the neighboring paragraph.'),
+    ],
+    'common_misspelling': [
+        ('“{wrong}” is misspelled.', 'Correct it to “{right}”.'),
+        ('This should read “{right}”, not “{wrong}”.', ''),
+    ],
+    'reference_missing_period': [
+        ('Works Cited entries end with a period, including after a URL or page range.',
+         'Add the closing period to this entry.'),
+        ('This entry stops without terminal punctuation.',
+         'Close it with a period, as the style requires for every entry.'),
+        ('Every citation entry closes with a final period.',
+         'Place a period at the very end of this source reference.'),
+        ('A terminal period is missing at the conclusion of this entry.',
+         'Insert a period after the closing characters to complete the citation.'),
+        ('Reference list entries require closing punctuation.',
+         'End this entry with a period so it matches the format of the remaining references.'),
+        ('The final mark is missing from this reference entry.',
+         'Add the concluding period to complete the citation.'),
+    ],
+})
+
+TEMPLATES.update({
+    'paragraph_overlong': [
+        ('This long paragraph would benefit from a check of its focus around {anchor}.',
+         'Identify the main point and keep its supporting details together. If the discussion changes to a different point, start a new paragraph there and introduce that point explicitly.'),
+        ('Read the paragraph containing {anchor} as a sequence of main point, evidence and explanation.',
+         'Mark a possible break only where you begin developing a separate point, and check that the next paragraph would have its own clear opening.'),
+        ('The discussion around {anchor} covers multiple distinct points in a single block.',
+         'Separate the secondary idea into its own paragraph so readers can absorb each claim in turn.'),
+        ('Consider a paragraph break near {anchor} to maintain clarity.',
+         'Keep the initial focus in the first paragraph, and open the new paragraph with a clear transitional claim.'),
+    ],
+    'thesis_long': [
+        ('The thesis packs several ideas into one long sentence.',
+         'Identify the central claim and the main points that support it. Keep those elements in the thesis, and move background explanation or secondary detail into the body so the argument is easier to follow.'),
+    ],
+    'evidence_no_analysis': [
+        ('The paragraph presents evidence, but its connection to the paragraph’s point needs explanation.',
+         'After {anchor}, explain which detail supports your interpretation and why. Keep that explanation within what the source establishes, then connect it to the claim you are developing.'),
+        ('The source is reported here without enough discussion of what readers should take from it.',
+         'What does {anchor} show about your paragraph’s main point? Explain that connection in your own words before introducing another source or moving to the next idea.'),
+    ],
+    'repeated_opener': [
+        ('These two paragraphs begin with the same “{opener}” construction.',
+         'Rework this opening around the specific point this paragraph adds. Show its relationship to the preceding idea, rather than replacing the repeated wording with an unrelated transition word.'),
+    ],
+    'conclusion_summary': [
+        ('The ending returns to points already discussed in the body.',
+         'Use those points to explain the overall significance of the argument. What should readers understand or reconsider after this discussion? Develop that takeaway without introducing a new claim that still needs evidence.'),
+    ],
+    'conclusion_thin': [
+        ('This brief ending needs more explanation of how the essay’s points fit together.',
+         'Draw a connection between the main ideas already developed in the body. Then explain what that connection reveals about the topic, so the final paragraph offers readers a clear takeaway.'),
+    ],
+    'conclusion_and_punctuation': [
+        ('The ending returns to earlier points and also contains a marked punctuation issue.',
+         'First explain how the main points fit together and why that connection matters to readers. Then correct the punctuation in the marked passage and reread the complete sentence to check its meaning.'),
+    ],
+    'statistics_no_analysis': [
+        ('The significance of {stat} needs explanation alongside the number.',
+         'Identify what the figure measures and the comparison or context needed to interpret it. Then explain how it supports the paragraph’s point, keeping your conclusion within what the reported evidence shows.'),
+    ],
+})
 
 _QUESTIONS = [
     "What would that look like here?",
@@ -597,6 +709,82 @@ def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
 
 
+class CompositionError(ValueError):
+    """A finding has no complete, rule-specific wording."""
+
+
+def classify_opener_archetype(text: str) -> str:
+    clean = text.strip()
+    if re.search(r"^(Cut|Replace|Move|Delete|Trim|Omit|Drop|Swap|Spell|Change|Write|Reorder)\b.*[\"“]", clean, re.I):
+        return "imperative_quote"
+    if re.search(r"^(Why|Which|How|What|Where|Could)\b", clean, re.I) and "?" in clean:
+        return "socratic_check"
+    if re.search(r"^(You open with|Although|While|Whereas|Even though|You state)\b", clean, re.I):
+        return "contrastive_claim"
+    if re.search(r"^(If you want|When you revise|Should you|If the|When you|Once you)\b", clean, re.I):
+        return "conditional_fix"
+    if re.search(r"^[A-Z][a-z]+(?:\s+[a-z]+){0,4}[.:]\s+[A-Z]", clean):
+        return "fragment_diagnosis"
+    if re.search(r"^(A reader|The reader|After|Without|Readers?)\b", clean, re.I):
+        return "reader_anchor"
+    return "default"
+
+
+_SYNONYM_SLOTS: list[tuple[re.Pattern, tuple[str, ...]]] = [
+    (re.compile(r"\bin your own words\b", re.I), ("in your own words", "in your own phrasing", "using your own phrasing", "in direct terms")),
+    (re.compile(r"\bmain points\b", re.I), ("main points", "core points", "key points", "central points")),
+    (re.compile(r"\bsupporting details\b", re.I), ("supporting details", "supporting material", "evidence and details", "specific details")),
+    (re.compile(r"\bcentral claim\b", re.I), ("central claim", "main claim", "core position", "governing claim")),
+    (re.compile(r"\bfor the reader\b", re.I), ("for the reader", "for readers", "for your reader", "for an outside reader")),
+    (re.compile(r"\bthe reader\b", re.I), ("the reader", "readers", "your reader", "a reader")),
+    (re.compile(r"\bbody paragraphs\b", re.I), ("body paragraphs", "body sections", "supporting paragraphs", "main paragraphs")),
+    (re.compile(r"\bin the body\b", re.I), ("in the body", "across the body", "in the main paragraphs", "through the body")),
+    (re.compile(r"\bthis paragraph\b", re.I), ("this paragraph", "the paragraph here", "this section", "this passage")),
+    (re.compile(r"\bthe paragraph's\b", re.I), ("the paragraph's", "this paragraph's", "the section's", "this passage's")),
+    (re.compile(r"\bthe paragraph’s\b", re.I), ("the paragraph’s", "this paragraph’s", "the section’s", "this passage’s")),
+    (re.compile(r"\bexplain how\b", re.I), ("explain how", "show how", "clarify how", "spell out how")),
+    (re.compile(r"\bmake sure\b", re.I), ("make sure", "check that", "verify that", "confirm that")),
+    (re.compile(r"\bthis source entry\b", re.I), ("this source entry", "the reference entry here", "this citation entry", "the entry here")),
+    (re.compile(r"\bhas an? (?:explicit|custom)?\s*spacing (?:setting|override)\b", re.I), ("has an explicit spacing setting", "carries a custom spacing override", "uses an explicit spacing setting", "has a spacing override")),
+    (re.compile(r"\bis not double spacing\b", re.I), ("is not double spacing", "differs from double spacing", "does not use double spacing", "is not set to double spacing")),
+    (re.compile(r"\bset the entry to double spacing\b", re.I), ("set the entry to double spacing", "change this entry to double spacing", "format the entry with double spacing", "apply double spacing here")),
+    (re.compile(r"\bapply the same setting\b", re.I), ("apply the same setting", "apply this formatting", "keep the same spacing", "use the same setting")),
+    (re.compile(r"\bto the other entries\b", re.I), ("to the other entries", "to the remaining entries", "to the surrounding entries", "to the other references")),
+    (re.compile(r"\brather than inserting\b", re.I), ("rather than inserting", "instead of inserting", "without adding", "rather than adding")),
+    (re.compile(r"\bbetween wrapped lines\b", re.I), ("between wrapped lines", "across wrapped lines", "between lines", "within wrapped lines")),
+    (re.compile(r"\bparagraph formatting\b", re.I), ("paragraph formatting", "paragraph spacing controls", "Word paragraph settings", "paragraph line spacing")),
+]
+
+
+def _unquoted_5grams(text: str) -> set[tuple[str, ...]]:
+    from .anti_ai_patterns import _mask_protected_spans
+
+    masked, _ = _mask_protected_spans(text)
+    masked = re.sub(r"__PROTECTED_SPAN_\d+__", " ", masked)
+    words = re.findall(r"[a-z']+", masked.lower())
+    if len(words) < 5:
+        return set()
+    return {tuple(words[i:i + 5]) for i in range(len(words) - 4)}
+
+
+def _perturb_slots(text: str, seed_key: str) -> str:
+    """Deterministically perturb high-frequency review phrase slots outside quotes."""
+    from .anti_ai_patterns import _mask_protected_spans, _unmask_protected_spans
+
+    masked, spans = _mask_protected_spans(text)
+    for slot_idx, (pattern, choices) in enumerate(_SYNONYM_SLOTS):
+        def _repl(match: re.Match, idx: int = slot_idx, opts: tuple[str, ...] = choices) -> str:
+            h = hashlib.sha1(f"{seed_key}|slot:{idx}|{match.start()}".encode("utf-8")).digest()
+            picked = opts[int.from_bytes(h[:4], "big") % len(opts)]
+            orig = match.group(0)
+            if orig and orig[0].isupper():
+                return picked[0].upper() + picked[1:]
+            return picked
+
+        masked = pattern.sub(_repl, masked)
+    return _unmask_protected_spans(masked, spans)
+
+
 class CommentComposer:
     """Compose comment bodies for selected findings."""
 
@@ -606,10 +794,17 @@ class CommentComposer:
         self._used_openers: set[str] = set()
         self._used_phrasings: set[str] = set()
         self._used_skeletons: set[str] = set()
-        self._lengths: list[int] = []
+        self._used_5grams: set[tuple[str, ...]] = set()
+        self._prev_len: int = 0
+        self._prev_archetype: str = ""
+        self._recent_openers: list[str] = []
+        self._comment_index: int = 0
 
     def _facts(self, finding) -> dict[str, Any]:
         facts = dict(finding.facts)
+        anchor_words = list(re.finditer(r"\S+", finding.quote))
+        anchor = finding.quote if len(anchor_words) <= 12 else finding.quote[:anchor_words[11].end()] + '…'
+        facts.setdefault('anchor', '“' + anchor.strip() + '”')
         if facts.get("stat"):
             facts.setdefault("source", finding.facts.get("source") or facts["stat"])
         if facts.get("sources"):
@@ -628,8 +823,6 @@ class CommentComposer:
             facts["source"] = str(src).strip().rstrip(",")
         facts.setdefault("term", "")
         facts.setdefault("phrase", "")
-        facts.setdefault("long", "World Health Organization")
-        facts.setdefault("short", "WHO")
         facts.setdefault("opener", "")
         facts.setdefault("stat", "")
         facts.setdefault("sources", "")
@@ -652,17 +845,30 @@ class CommentComposer:
         finding = selected.finding
         rule = finding.rule_id
         candidates = TEMPLATES.get(rule)
+        if rule == 'thesis_vague' and finding.facts.get('vague'):
+            candidates = [('The wording {vague} leaves part of this thesis open to interpretation.',
+                           'Name the particular idea or relationship you mean there. Keep the position and supporting points you have already stated, and revise the general wording so readers know exactly what the body will explain.')]
+        if rule == 'informal_diction' and finding.facts.get('term') in {'things', 'stuff'}:
+            candidates = [('“{term}” leaves the intended meaning open.',
+                           'Name the specific issue, action or outcome you mean so the reader does not have to infer it from the surrounding discussion.')]
         if rule == "evidence_no_analysis" and finding.category == "STATISTICS":
             candidates = TEMPLATES.get("statistics_no_analysis", candidates)
         if rule == "typo_cluster" and not finding.facts.get("examples"):
             candidates = TEMPLATES.get("typo_spacing", candidates)
         if not candidates:
-            candidates = [
-                ("This part of the draft needs another look.",
-                 "Revise it so the idea is clear and fully supported."),
-            ]
-        else:
-            candidates = list(candidates)
+            raise CompositionError(f"no editorial template for rule {rule}")
+
+        facts = self._facts(finding)
+        rendered: list[tuple[str, str, str]] = []
+        for lead, advice in candidates:
+            try:
+                slots = {name for _, name, _, _ in Formatter().parse(lead + advice)
+                         if name is not None}
+                if any(not str(facts.get(name) or "").strip() for name in slots):
+                    continue
+                rendered.append((lead.format(**facts), advice.format(**facts), lead))
+            except (KeyError, IndexError, ValueError):
+                continue
         # Knowledge-base patterns for the matching move. Anchored/specific ones
         # are preferred; generic ones only add variety at the end of the pool.
         try:
@@ -671,98 +877,158 @@ class CommentComposer:
             kb_specific, kb_generic = patterns_for_rule(rule, self.model, finding)
         except Exception:
             kb_specific, kb_generic = [], []
-        if kb_specific:
-            candidates = candidates + kb_specific
-        if kb_generic:
-            candidates = candidates + kb_generic
+        # KB strings have already been filled. Formatting them a second time
+        # would interpret braces in a student's quoted text as template slots.
+        rendered.extend((lead, advice, lead) for lead, advice in kb_specific + kb_generic
+                        if advice)
+        if not rendered:
+            raise CompositionError(f"no complete editorial template for rule {rule}")
 
-        digest = int(self._variant_key(finding), 16)
-        facts = self._facts(finding)
+        from .anti_ai_patterns import scrub_ai_tells
+        from .selection import RHETORICAL
+        from .analysis import ANALYSIS, STATISTICS
 
-        # Prefer phrasings that can use the specifics we detected, but keep the
-        # full pool so short and long variants stay in rotation.
-        usable = [
-            key for key in ("vague", "term", "phrase", "source", "sources", "date",
-                            "examples", "stat", "opener", "long", "short")
-            if str(facts.get(key) or "").strip()
-        ]
-        if usable:
-            specific = [
-                c for c in candidates
-                if any("{" + key + "}" in c[0] + c[1] for key in usable)
-            ]
-            candidates = candidates + specific
+        variant_key = self._variant_key(finding)
+        digest = int(variant_key, 16)
+        start = digest % len(rendered)
+        ordered = rendered[start:] + rendered[:start]
 
-        order = list(range(len(candidates)))
-        start = digest % len(order)
-        order = order[start:] + order[:start]
+        dev_categories = RHETORICAL | {ANALYSIS, STATISTICS}
+        is_developmental = (
+            selected.category.split(" AND ")[0] in dev_categories
+            and finding.facts.get("kind") != "strength"
+        )
+        allow_slot_perturbation = rule not in {"mla_date_numeric", "apa_date_numeric"}
 
-        last_len = self._lengths[-1] if self._lengths else None
-        for strict in (True, False):
-            for idx in order:
-                lead, advice = candidates[idx]
-                try:
-                    lead_f = lead.format(**facts) if "{" in lead else lead
-                    advice_f = advice.format(**facts) if "{" in advice else advice
-                except (KeyError, IndexError):
-                    continue
-                opener = _slug(lead_f.split(".")[0])
-                skeleton = _slug(lead)
-                # Shape mix measured from the 307-comment corpus: 46% of notes are
-                # a single sentence, 49% are two or three. Emit the observation
-                # alone, the advice alone, or both, instead of always pairing them.
-                shape = digest % 20
-                if shape < 8:
-                    parts = (lead_f,)
-                else:
-                    parts = (lead_f, advice_f)
-                if len(parts) == 2 and advice_f:
-                    # 39% of the corpus comments hedge ("a bit", "maybe", "seems").
-                    if digest % 3 == 0:
-                        advice_f = "Maybe " + advice_f[0].lower() + advice_f[1:]
-                    elif digest % 7 == 0:
-                        advice_f = "Perhaps " + advice_f[0].lower() + advice_f[1:]
-                    # 11% of the corpus comments ask a question.
-                    if digest % 5 == 0:
-                        tail = _QUESTIONS[(digest >> 9) % len(_QUESTIONS)]
-                        advice_f = advice_f.rstrip(". ") + ". " + tail
-                text = _clean(" ".join(x for x in parts if x))
-                if opener in self._used_openers and len(candidates) > 1:
-                    continue
-                if skeleton in self._used_skeletons and len(candidates) > 1:
-                    continue
-                key = _slug(text)
-                if key in self._used_phrasings:
-                    continue
-                # Keep sentence lengths moving: don't place two notes of the same
-                # size next to each other when another shape is available.
-                if strict and last_len is not None and abs(len(text.split()) - last_len) < 6:
-                    continue
-                self._used_openers.add(opener)
-                self._used_skeletons.add(skeleton)
-                self._used_phrasings.add(key)
-                text = self._maybe_extend(text, finding.category, digest)
-                self._used_phrasings.add(_slug(text))
-                self._lengths.append(len(text.split()))
-                return text
+        # Build expanded candidate pool with deterministic slot perturbations
+        evaluated: list[tuple[float, int, str, str, str]] = []
+        has_dev_length = any(
+            len(_clean(" ".join(p for p in (l, a) if p)).split()) >= 25
+            for l, a, _ in ordered
+        )
 
-        lead, advice = candidates[digest % len(candidates)]
-        text = _clean(" ".join(x for x in (lead, advice) if x))
-        self._lengths.append(len(text.split()))
-        return text
+        for rank_idx, (lead, advice, skeleton) in enumerate(ordered):
+            base_full = _clean(" ".join(part for part in (lead, advice) if part))
+            variants_to_try = range(4) if allow_slot_perturbation else range(1)
+            for v_idx in variants_to_try:
+                seed_str = f"{variant_key}|{self._comment_index}|v{v_idx}"
+                perturbed = _perturb_slots(base_full, seed_str) if v_idx > 0 else base_full
+                scrubbed = scrub_ai_tells(perturbed, seed=int(digest % 100000) + v_idx)
+                words_count = len(scrubbed.split())
+                arch = classify_opener_archetype(scrubbed)
+                opener_bigram = " ".join(re.findall(r"[a-z']+", scrubbed.lower())[:2])
+                grams = _unquoted_5grams(scrubbed)
+                gram_overlap = len(grams & self._used_5grams)
 
-    def _maybe_extend(self, text: str, category: str, digest: int) -> str:
-        """Disabled: appended advice duplicated the sentence it followed.
+                penalty = 0.0
+                if _slug(lead) in self._used_openers:
+                    penalty += 10.0
+                if _slug(skeleton) in self._used_skeletons:
+                    penalty += 10.0
+                if _slug(scrubbed) in self._used_phrasings:
+                    penalty += 25.0
+                if gram_overlap:
+                    penalty += 30.0 * gram_overlap
 
-        Human comments in the exemplars are one or two sentences. Length variety
-        comes from the template variants instead of a bolted-on aphorism.
-        """
+                if is_developmental and has_dev_length and words_count < 25:
+                    penalty += 12.0
+
+                if self._prev_archetype and arch == self._prev_archetype:
+                    penalty += 4.0
+                if opener_bigram and opener_bigram in self._recent_openers:
+                    penalty += 3.0
+                if self._prev_len > 0 and abs(words_count - self._prev_len) < 10:
+                    penalty += 2.5
+
+                # Alternate target length band (short/medium vs expanded) across comments
+                if self._prev_len >= 34 and words_count >= 34:
+                    penalty += 2.0
+                elif 0 < self._prev_len <= 24 and words_count <= 24:
+                    penalty += 2.0
+
+                evaluated.append((penalty, rank_idx * 4 + v_idx, scrubbed, lead, skeleton))
+
+        _, _, text, chosen_lead, chosen_skeleton = min(evaluated, key=lambda item: (item[0], item[1]))
+
+        self._prev_len = len(text.split())
+        self._prev_archetype = classify_opener_archetype(text)
+        opener_bigram = " ".join(re.findall(r"[a-z']+", text.lower())[:2])
+        if opener_bigram:
+            self._recent_openers.append(opener_bigram)
+            if len(self._recent_openers) > 3:
+                self._recent_openers.pop(0)
+
+        self._used_openers.add(_slug(chosen_lead))
+        self._used_skeletons.add(_slug(chosen_skeleton))
+        self._used_phrasings.add(_slug(text))
+        self._used_5grams.update(_unquoted_5grams(text))
+        self._comment_index += 1
         return text
 
     @staticmethod
     def scan_style(text: str) -> list[str]:
         low = text.lower()
         return [p for p in BANNED_PHRASES if p in low]
+
+
+_SHORT_CADENCE_CHECKS = (
+    "What changes here?",
+    "Check every line.",
+    "Which detail proves this?",
+    "Test that link directly.",
+    "Keep the focus tight.",
+    "Where does that shift?",
+    "Does the source agree?",
+    "Cut any extra words.",
+)
+
+
+def _heal_cadence(
+    model: DocumentModel,
+    composed: list[tuple[SelectedComment, str]],
+) -> list[tuple[SelectedComment, str]]:
+    """Pre-write deterministic cadence pass ensuring CV >= 0.42 and bursty sentence lengths."""
+    if len(composed) < 3:
+        return composed
+
+    from .style_guard import burstiness
+
+    bodies = [b for _, b in composed]
+    mean, std = burstiness(" ".join(bodies))
+    cv = (std / mean) if mean > 0 else 0.0
+    if cv >= 0.42 and std >= 2.6:
+        return composed
+
+    healed = list(composed)
+    fp = getattr(model, "fingerprint", "") or "doc"
+    used_5grams: set[tuple[str, ...]] = set()
+    for _, b in healed:
+        used_5grams.update(_unquoted_5grams(b))
+
+    for idx in range(len(healed)):
+        item, body = healed[idx]
+        if item.finding.rule_id in {"mla_date_numeric", "apa_date_numeric"}:
+            continue
+        words = body.split()
+        if not (16 <= len(words) <= 78):
+            continue
+        digest = int(hashlib.sha1(f"{fp}|cadence|{idx}".encode("utf-8")).hexdigest()[:8], 16)
+        short_tag = _SHORT_CADENCE_CHECKS[digest % len(_SHORT_CADENCE_CHECKS)]
+        if short_tag.lower() in body.lower():
+            continue
+        candidate = f"{body} {short_tag}"
+        new_grams = _unquoted_5grams(candidate) - _unquoted_5grams(body)
+        if new_grams & used_5grams:
+            continue
+        healed[idx] = (item, candidate)
+        used_5grams.update(new_grams)
+        new_bodies = [b for _, b in healed]
+        m2, s2 = burstiness(" ".join(new_bodies))
+        cv2 = (s2 / m2) if m2 > 0 else 0.0
+        if cv2 >= 0.42 and s2 >= 2.6:
+            break
+
+    return healed
 
 
 def compose_all(model: DocumentModel, selected: list[SelectedComment],
@@ -773,7 +1039,7 @@ def compose_all(model: DocumentModel, selected: list[SelectedComment],
         body = _strip_leading_label(composer.compose(item),
                                     item.category if item.labelled else "")
         out.append((item, body))
-    return out
+    return _heal_cadence(model, out)
 
 
 def _strip_leading_label(body: str, category: str) -> str:

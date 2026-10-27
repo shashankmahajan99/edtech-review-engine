@@ -1,4 +1,8 @@
-"""Generated comments must sit inside the measured reviewer distribution."""
+"""Editorial readability checks, without enforcing authorship-detector proxies.
+
+Sentence shapes and variance are descriptive corpus statistics. They must not
+cause a complete revision instruction to be shortened or padded.
+"""
 from __future__ import annotations
 
 import re
@@ -29,7 +33,7 @@ def sentences(text: str) -> list[str]:
 
 
 @unittest.skipUnless(FIXTURES.exists(), "fixtures not built")
-class TestVoiceDistribution(unittest.TestCase):
+class TestEditorialVoice(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         OUT.mkdir(parents=True, exist_ok=True)
@@ -45,24 +49,12 @@ class TestVoiceDistribution(unittest.TestCase):
         words = [len(b.split()) for b in self.bodies]
         self.assertGreaterEqual(statistics.fmean(words), 14)
         self.assertLessEqual(statistics.fmean(words), 36)
-        self.assertGreaterEqual(statistics.pstdev(words), 6.0,
-                                "comment lengths are too uniform")
 
-    def test_sentence_burstiness(self):
-        lengths = [len(s.split()) for b in self.bodies for s in sentences(b)]
-        self.assertGreaterEqual(statistics.pstdev(lengths), 4.0)
-
-    def test_shape_mix(self):
-        one = sum(1 for b in self.bodies if len(sentences(b)) == 1) / len(self.bodies)
-        self.assertGreaterEqual(one, 0.2)
-        self.assertLessEqual(one, 0.7)
-
-    def test_questions_and_hedges(self):
-        questions = sum(1 for b in self.bodies if "?" in b) / len(self.bodies)
-        hedges = sum(1 for b in self.bodies
-                     if any(h in b.lower() for h in HEDGES)) / len(self.bodies)
-        self.assertGreaterEqual(questions, 0.02)
-        self.assertGreaterEqual(hedges, 0.1)
+    def test_no_generic_appended_questions(self):
+        for body in self.bodies:
+            self.assertNotIn("What would that look like here?", body)
+            self.assertNotIn("Which sentence would you start with?", body)
+            self.assertNotIn("How would you phrase that in one line?", body)
 
     def test_no_contractions_or_llm_vocabulary(self):
         for body in self.bodies:

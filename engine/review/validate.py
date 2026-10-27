@@ -15,8 +15,10 @@ from docx import Document
 from lxml import etree
 
 from . import links
+from .anti_ai_patterns import audit_ai_tells
 from .docmodel import W_NS, DocumentModel
 from .style_guard import check_text_block, banned_hits
+from .letter_format import is_endnote_heading
 
 W = f"{{{W_NS}}}"
 R = f"{{{('http://schemas.openxmlformats.org/officeDocument/2006/relationships')}}}"
@@ -134,6 +136,15 @@ def validate_deliverable(
     except Exception:
         produced_texts = _paragraph_texts(doc_root)
     original_texts = [p.text for p in model.paragraphs]
+    # The writer may append one empty paragraph holding the new endnote marker.
+    # It is reviewer apparatus, not an extra manuscript paragraph.
+    last_para = next((p for p in reversed(list(doc_root.find(f"{W}body"))) if p.tag == f"{W}p"), None)
+    if (len(produced_texts) == len(original_texts) + 1 and produced_texts[-1] == ""
+            and last_para is not None
+            and last_para.find(f".//{W}endnoteReference[@{W}id='1']") is not None):
+        produced_texts = produced_texts[:-1]
+    if len(produced_texts) != len(original_texts):
+        errors.append("manuscript paragraph count changed")
     limit = min(len(original_texts), len(produced_texts))
     drift = [
         i for i in range(limit)
@@ -151,10 +162,14 @@ def validate_deliverable(
 
     anchors = _anchors(doc_root)
     expected_map = dict(expected)
+    expected_bodies = dict(zip((cid for cid, _ in expected), comment_bodies))
+    if len(expected) != len(comment_bodies):
+        errors.append("expected comment bodies and anchors have different counts")
     ours = set(expected_map)
-    minimum = 3 if model.word_count < 300 else (4 if model.word_count < 600 else 5)
-    if not (minimum <= len(ours) <= 34):
-        errors.append(f"comment count {len(ours)} outside {minimum}-34")
+    if not (1 <= len(ours) <= 120):
+        errors.append(f"comment count {len(ours)} outside 1-120")
+    if len(ours) < 3:
+        warnings.append("Few supported findings: review the manuscript manually for issues beyond the available rules")
     metrics["comments"] = len(ours)
     metrics["pre_existing_comments"] = len(ids) - len(ours)
 
@@ -165,6 +180,8 @@ def validate_deliverable(
         if cid not in ours:
             continue  # pre-existing reviewer notes are preserved untouched
         body = _comment_body(c)
+        if body != expected_bodies.get(cid):
+            errors.append(f"comment {cid}: written body differs from composed feedback")
         bodies_by_id[cid] = body
         links_in = [lk for lk in c.iter(f"{W}hyperlink")]
         if links_in:
@@ -177,15 +194,16 @@ def validate_deliverable(
         words = len(body.split())
         if words < 6 or words > 95:
             errors.append(f"comment {cid}: {words} words outside 6-95")
-        if not re.search(r"[.?!\"]$", body):
+        if not re.search(r"[.?!\"”]$", body):
             errors.append(f"comment {cid}: does not end with terminal punctuation")
-        if "  " in body:
+        prose = re.sub(r"\u201c[^\u201d]*\u201d|\"[^\"]*\"", "QUOTED", body)
+        if "  " in prose:
             errors.append(f"comment {cid}: double space")
-        hits = banned_hits(body)
+        hits = list(dict.fromkeys(banned_hits(body) + audit_ai_tells(body)))
         if hits:
             errors.append(f"comment {cid}: banned phrasing {hits}")
         label = label_by_id.get(cid)
-        if label and body.upper().startswith(label + " "):
+        if label and label not in {'MLA', 'APA'} and body.upper().startswith(label + " "):
             errors.append(f"comment {cid}: body repeats its category label")
 
         got = anchors.get(cid, [])
@@ -248,16 +266,22 @@ def validate_deliverable(
         errors.append("endnote id=1 missing")
     else:
         paras = ["".join(t.text or "" for t in p.iter(f"{W}t")) for p in en1.findall(f"{W}p")]
+        if paras:
+            paras[0] = paras[0].removeprefix(" ")  # spacing after the native endnote number
         joined = "\n".join(paras).strip()
+        if paras != endnote_paragraphs:
+            errors.append("written endnote differs from composed feedback")
         if not joined.lower().startswith("dear "):
             errors.append("endnote does not open with a greeting")
         if reviewer_name.lower() not in joined.lower():
             errors.append("endnote missing reviewer signature")
-        domain_lines = [p for p in paras if p.strip().endswith(":")]
-        if len(domain_lines) < 3:
-            errors.append(f"endnote has {len(domain_lines)} domain headings, expected 3")
-        if len(joined.split()) < 120:
-            errors.append("endnote shorter than 120 words")
+        domain_lines = [p for p in paras if is_endnote_heading(p)]
+        metrics['endnote_sections'] = len(domain_lines)
+        if not 1 <= len(domain_lines) <= 3:
+            errors.append(f"endnote has {len(domain_lines)} domain headings, expected 1-3 supported areas")
+        minimum_words = {1: 60, 2: 90, 3: 120}.get(len(domain_lines), 120)
+        if 1 <= len(domain_lines) <= 3 and len(joined.split()) < minimum_words:
+            errors.append(f"endnote shorter than {minimum_words} words")
         # typography: TNR 12 pt red
         for run in en1.iter(f"{W}r"):
             t = run.find(f"{W}t")
@@ -284,13 +308,19 @@ def validate_deliverable(
     bodies = [bodies_by_id[i] for i in ids if bodies_by_id.get(i)]
     report = check_text_block(bodies, "comments")
     metrics["style"] = report.metrics
-    errors.extend(report.errors)
+    # Aggregate style distributions are editorial signals, not correctness
+    # failures or authorship estimates. Do not rewrite sound advice to fit them.
+    for error in report.errors:
+        (errors if "banned" in error else warnings).append(error)
 
     en_text = " ".join(endnote_paragraphs[2:]) if len(endnote_paragraphs) > 2 else ""
     en_report = check_text_block([en_text], "endnote")
     metrics["endnote_style"] = en_report.metrics
     # A single long block cannot be judged for opener variety; keep substance checks.
     errors.extend(e for e in en_report.errors if "opener" not in e and "5-gram" not in e)
+    en_tells = audit_ai_tells(en_text)
+    if en_tells:
+        errors.append(f"endnote: banned phrasing {en_tells}")
 
     errors.extend(_native_package_problems(path))
 
@@ -364,4 +394,3 @@ def _native_package_problems(path: Path) -> list[str]:
     except Exception as exc:  # pragma: no cover - defensive
         problems.append(f"could not inspect package: {exc}")
     return problems
-

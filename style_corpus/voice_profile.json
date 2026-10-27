@@ -121,5 +121,49 @@
       "APA (Title Page): Unless otherwise instructed, you could add a title page at the start of the paper.\nAn APA style title page typically includes the following elements, centered and double spaced:\nTitle of the Paper: Full title of the paper.\nAuthor's Name: Full name of the author(s).\nInstitutional Affiliation: The name of the institution where the research was conducted.\nCourse Number and Name: The course for which the paper is being written.\nInstructor's Name: The name of the instructor.\nDue Date: The due date for the assignment",
       "Idea Development (Clarity): You could make the focus of this idea clearer as the discussion is a bit vague.\nYou conclude that this change will take longer than it should because of how much people rely on and connect with robots. Could you develop this point by explaining why human dependence on robots makes it difficult to change our perceptions of them?\nCan you connect your personal opinion more directly to the author's argument or provide a specific example to support your reasoning?"
     ]
+  },
+  "target_cv": 0.55,
+  "sentence_length_quantiles": {
+    "p10": 6.0,
+    "p25": 9.0,
+    "p50": 13.0,
+    "p75": 18.0,
+    "p90": 26.0
+  },
+  "opener_archetypes": [
+    "imperative_quote",
+    "socratic_check",
+    "contrastive_claim",
+    "conditional_fix",
+    "fragment_diagnosis",
+    "reader_anchor"
+  ],
+  "opener_archetype_exemplars": {
+    "imperative_quote": [
+      "Replace “things” with the specific policy or outcome you mean.",
+      "Move the date below the course line; an MLA heading ends with the date.",
+      "Cut “In conclusion” and let the final paragraph close on the idea itself."
+    ],
+    "socratic_check": [
+      "What central claim should readers take from this opening?",
+      "Which detail in the source establishes the connection to your paragraph claim?",
+      "Could you identify the specific position you will support and the reasons behind it?"
+    ],
+    "contrastive_claim": [
+      "You open with a source citation, yet the paragraph has not stated its own claim.",
+      "While the body paragraphs develop three distinct reasons, the thesis names only the broad topic."
+    ],
+    "conditional_fix": [
+      "If the discussion changes to a different point, start a new paragraph there and introduce that point explicitly.",
+      "When you present these findings, elaborate on what the data proves and how it supports the main claim."
+    ],
+    "fragment_diagnosis": [
+      "Dates in MLA run day-month-year. Set this one as 12 October 2026.",
+      "Titles do not take a period. Remove it."
+    ],
+    "reader_anchor": [
+      "After the abstract, a reader should know what you found, not just what you studied.",
+      "Without a topic sentence, the reader meets the citation before knowing what it is meant to prove."
+    ]
   }
 }
